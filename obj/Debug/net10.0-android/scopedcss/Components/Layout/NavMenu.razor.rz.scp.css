@@ -1,0 +1,55 @@
+
+.top-nav[b-wkkyvs0l6y] {
+    display: flex;
+    align-items: center;
+    height: 3.25rem;
+    margin: 10px 0;
+    padding: 0 1.25rem;
+    background: var(--surface, #12121a);
+    border-bottom: 1px solid var(--border, #2a2a3a);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.nav-brand[b-wkkyvs0l6y] {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #e0e0f0);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    margin-right: 1.5rem;
+}
+
+.nav-tabs[b-wkkyvs0l6y] {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    gap: 0.1rem;
+}
+
+.nav-tab[b-wkkyvs0l6y] {
+    height: auto;
+    margin: 0.45rem 0;
+    text-decoration: none;
+    line-height: normal;
+}
+
+.nav-tab:hover[b-wkkyvs0l6y] {
+    text-decoration: none;
+}
+
+.nav-tab:focus[b-wkkyvs0l6y],
+.nav-tab:visited[b-wkkyvs0l6y] {
+    text-decoration: none;
+}
+
+.nav-tab[b-wkkyvs0l6y],
+.nav-tab *[b-wkkyvs0l6y] {
+    text-decoration: none;
+}
+
+.nav-tab.active[b-wkkyvs0l6y] {
+    border-color: var(--gemini, #4285f4);
+    background: color-mix(in srgb, var(--gemini, #4285f4) 18%, transparent);
+}

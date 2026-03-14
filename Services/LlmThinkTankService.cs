@@ -1,0 +1,365 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Linq;
+
+namespace  LLMThinkTank.Services;
+
+// ── Data models ───────────────────────────────────────────────────────────────
+
+public class LlmModel
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Avatar { get; init; } = "";
+    public string Personality { get; init; } = "";
+}
+
+public class SharedTurn
+{
+    public string ModelId { get; set; } = "";
+    public string ModelName { get; set; } = "";
+    public string Text { get; set; } = "";
+    public int Round { get; set; }
+}
+
+public class ConversationMessage
+{
+    public string ModelId { get; set; } = "";
+    public string Text { get; set; } = "";
+    public int Round { get; set; }
+    public bool IsError { get; set; }
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+public class LlmThinkTankService
+{
+    private readonly HttpClient _http;
+    private readonly LlmThinkTankSettingsService _settings;
+
+    public LlmThinkTankService(HttpClient http, LlmThinkTankSettingsService settings)
+    {
+        _http = http;
+        _settings = settings;
+    }
+
+    public List<LlmModel> Models { get; } = new()
+    {
+        new LlmModel
+        {
+            Id = "openai",
+            Name = "ChatGPT",
+            Avatar = "⬡",
+            Personality = "You are ChatGPT, made by OpenAI. You are in a live roundtable with three other AI systems: Claude (Anthropic), Gemini (Google), and DeepSeek. Read what they said and respond directly to them and the topic. Be conversational and curious. 2-3 sentences max."
+        },
+        new LlmModel
+        {
+            Id = "claude",
+            Name = "Claude",
+            Avatar = "◈",
+            Personality = "You are Claude, made by Anthropic. You are in a live roundtable with three other AI systems: ChatGPT (OpenAI), Gemini (Google), and DeepSeek. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max."
+        },
+        new LlmModel
+        {
+            Id = "gemini",
+            Name = "Gemini",
+            Avatar = "✦",
+            Personality = "You are Gemini, made by Google. You are in a live roundtable with three other AI systems: ChatGPT (OpenAI), Claude (Anthropic), and DeepSeek. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max."
+        },
+        new LlmModel
+        {
+            Id = "deepseek",
+            Name = "DeepSeek",
+            Avatar = "◉",
+            Personality = "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with three other AI systems: ChatGPT (OpenAI), Claude (Anthropic), and Gemini (Google). Read what they said and engage directly. Be precise and insightful. 2-3 sentences max."
+        }
+    };
+
+    // ── Main dispatch ────────────────────────────────────────────────────────
+
+    public Task<string> CallModel(LlmModel model, string topic, List<SharedTurn> history)
+        => CallProvider(model.Id, model.Personality, authOverrideJson: null, topic, history);
+
+    public Task<string> CallProvider(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
+        => providerId switch
+        {
+            "openai"   => CallOpenAI(providerId, personalityMarkdown, authOverrideJson, topic, history),
+            "claude"   => CallClaude(providerId, personalityMarkdown, authOverrideJson, topic, history),
+            "gemini"   => CallGemini(providerId, personalityMarkdown, authOverrideJson, topic, history),
+            "deepseek" => CallDeepSeek(providerId, personalityMarkdown, authOverrideJson, topic, history),
+            _          => throw new ArgumentException($"Unknown provider: {providerId}")
+        };
+
+    private string GetApiKey(string providerId, string? authOverrideJson)
+    {
+        if (!string.IsNullOrWhiteSpace(authOverrideJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(authOverrideJson);
+                if (doc.RootElement.TryGetProperty("apiKey", out var apiKey))
+                    return apiKey.GetString() ?? "";
+            }
+            catch { }
+        }
+
+        return _settings.GetKeyForProvider(providerId, null);
+    }
+
+    private string GetModel(string providerId, string? authOverrideJson, string defaultModel)
+    {
+        if (!string.IsNullOrWhiteSpace(authOverrideJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(authOverrideJson);
+                if (doc.RootElement.TryGetProperty("model", out var model))
+                {
+                    var v = model.GetString();
+                    if (!string.IsNullOrWhiteSpace(v))
+                        return v;
+                }
+            }
+            catch { }
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(_settings.GetAuthJson(providerId));
+            if (doc.RootElement.TryGetProperty("model", out var model))
+            {
+                var v = model.GetString();
+                if (!string.IsNullOrWhiteSpace(v))
+                    return v;
+            }
+        }
+        catch { }
+
+        return defaultModel;
+    }
+
+    // ── Shared history builder (OpenAI / DeepSeek style) ─────────────────────
+
+    private static List<object> BuildOpenAiMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
+    {
+        var messages = new List<object>
+        {
+            new { role = "system", content = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" }
+        };
+
+        if (history.Count == 0)
+        {
+            messages.Add(new { role = "user", content = $"The topic is: \"{topic}\". Please give your opening thoughts." });
+            return messages;
+        }
+
+        foreach (var turn in history)
+        {
+            if (turn.ModelId == providerId)
+                messages.Add(new { role = "assistant", content = turn.Text });
+            else
+                messages.Add(new { role = "user", content = $"[{turn.ModelName}]: {turn.Text}" });
+        }
+
+        if (history.Last().ModelId == providerId)
+            messages.Add(new { role = "user", content = "Please continue the discussion." });
+
+        return messages;
+    }
+
+    // ── OpenAI ───────────────────────────────────────────────────────────────
+
+    private async Task<string> CallOpenAI(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
+    {
+        var messages = BuildOpenAiMessages(providerId, personalityMarkdown, topic, history);
+
+        var model = GetModel("openai", authOverrideJson, defaultModel: "gpt-4o");
+
+        var payload = new
+        {
+            model,
+            max_tokens = 200,
+            messages
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey("openai", authOverrideJson));
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"OpenAI {response.StatusCode}: {ExtractError(json)}");
+
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? "";
+    }
+
+    // ── Claude ───────────────────────────────────────────────────────────────
+
+    private async Task<string> CallClaude(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
+    {
+        var openAiMessages = BuildOpenAiMessages(providerId, personalityMarkdown, topic, history);
+
+        var system = $"{personalityMarkdown}\n\nTopic: \"{topic}\"";
+        var filtered = openAiMessages
+            .Where(m => (string)m.GetType().GetProperty("role")!.GetValue(m)! != "system")
+            .Select(m => new
+            {
+                role = (string)m.GetType().GetProperty("role")!.GetValue(m)!,
+                content = (string)m.GetType().GetProperty("content")!.GetValue(m)!
+            })
+            .ToList();
+
+        var model = GetModel("claude", authOverrideJson, defaultModel: "claude-sonnet-4-6");
+
+        var payload = new
+        {
+            model,
+            max_tokens = 200,
+            system,
+            messages = filtered
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
+        request.Headers.Add("x-api-key", GetApiKey("claude", authOverrideJson));
+        request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Claude {response.StatusCode}: {ExtractError(json)}");
+
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement
+            .GetProperty("content")[0]
+            .GetProperty("text")
+            .GetString() ?? "";
+    }
+
+    // ── Gemini ───────────────────────────────────────────────────────────────
+
+    private async Task<string> CallGemini(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
+    {
+        var rawTurns = new List<(string role, string text)>();
+
+        if (history.Count == 0)
+        {
+            rawTurns.Add(("user", $"The topic is: \"{topic}\". Please give your opening thoughts."));
+        }
+        else
+        {
+            foreach (var turn in history)
+            {
+                var role = turn.ModelId == providerId ? "model" : "user";
+                var text = turn.ModelId == providerId ? turn.Text : $"[{turn.ModelName}]: {turn.Text}";
+                rawTurns.Add((role, text));
+            }
+
+            if (history.Last().ModelId == providerId)
+                rawTurns.Add(("user", "Please continue the discussion."));
+        }
+
+        var merged = new List<(string role, string text)>();
+        foreach (var (role, text) in rawTurns)
+        {
+            if (merged.Count > 0 && merged.Last().role == role)
+                merged[^1] = (role, merged.Last().text + "\n" + text);
+            else
+                merged.Add((role, text));
+        }
+
+        if (merged.Count > 0 && merged[0].role == "model")
+            merged.Insert(0, ("user", $"Topic: \"{topic}\""));
+
+        var contents = merged.Select(t => new
+        {
+            role = t.role,
+            parts = new[] { new { text = t.text } }
+        }).ToList();
+
+        var payload = new
+        {
+            system_instruction = new { parts = new[] { new { text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" } } },
+            contents,
+            generationConfig = new { maxOutputTokens = 200 }
+        };
+
+        var model = GetModel("gemini", authOverrideJson, defaultModel: "gemini-2.0-flash-lite");
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GetApiKey("gemini", authOverrideJson)}";
+        var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Gemini {response.StatusCode}: {ExtractError(json)}");
+
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement
+            .GetProperty("candidates")[0]
+            .GetProperty("content")
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString() ?? "";
+    }
+
+    // ── DeepSeek ─────────────────────────────────────────────────────────────
+
+    private async Task<string> CallDeepSeek(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
+    {
+        var messages = BuildOpenAiMessages(providerId, personalityMarkdown, topic, history);
+
+        var model = GetModel("deepseek", authOverrideJson, defaultModel: "deepseek-chat");
+
+        var payload = new
+        {
+            model,
+            max_tokens = 200,
+            messages
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.deepseek.com/chat/completions");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey("deepseek", authOverrideJson));
+        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await _http.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"DeepSeek {response.StatusCode}: {ExtractError(json)}");
+
+        var doc = JsonDocument.Parse(json);
+        return doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? "";
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string ExtractError(string json)
+    {
+        try
+        {
+            var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("error", out var err))
+            {
+                if (err.TryGetProperty("message", out var msg))
+                    return msg.GetString() ?? json;
+            }
+        }
+        catch { }
+        return json.Length > 200 ? json[..200] : json;
+    }
+}

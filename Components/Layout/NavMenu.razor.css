@@ -1,0 +1,55 @@
+
+.top-nav {
+    display: flex;
+    align-items: center;
+    height: 3.25rem;
+    margin: 10px 0;
+    padding: 0 1.25rem;
+    background: var(--surface, #12121a);
+    border-bottom: 1px solid var(--border, #2a2a3a);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.nav-brand {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #e0e0f0);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    margin-right: 1.5rem;
+}
+
+.nav-tabs {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    gap: 0.1rem;
+}
+
+.nav-tab {
+    height: auto;
+    margin: 0.45rem 0;
+    text-decoration: none;
+    line-height: normal;
+}
+
+.nav-tab:hover {
+    text-decoration: none;
+}
+
+.nav-tab:focus,
+.nav-tab:visited {
+    text-decoration: none;
+}
+
+.nav-tab,
+.nav-tab * {
+    text-decoration: none;
+}
+
+.nav-tab.active {
+    border-color: var(--gemini, #4285f4);
+    background: color-mix(in srgb, var(--gemini, #4285f4) 18%, transparent);
+}

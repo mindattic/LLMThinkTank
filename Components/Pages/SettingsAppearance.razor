@@ -1,0 +1,59 @@
+@namespace LLMThinkTank.Components.Pages
+@inject AppearanceService Appearance
+@inject IJSRuntime JS
+
+<div class="settings-form">
+    <label>Theme</label>
+
+    <select class="settings-select" value="@GetThemeValue(Appearance.Mode)" @onchange="OnThemeChanged">
+        @foreach (var t in Themes)
+        {
+            <option value="@t.Value">@t.Label</option>
+        }
+    </select>
+</div>
+
+@code {
+    private record ThemeItem(AppearanceMode Mode, string Value, string Label);
+
+    private static readonly ThemeItem[] Themes =
+    [
+        new(AppearanceMode.Dark, "dark", "Dark"),
+        new(AppearanceMode.Light, "light", "Light"),
+        new(AppearanceMode.Spring, "spring", "Spring"),
+        new(AppearanceMode.Summer, "summer", "Summer"),
+        new(AppearanceMode.Autumn, "autumn", "Autumn"),
+        new(AppearanceMode.Winter, "winter", "Winter"),
+        new(AppearanceMode.Matrix, "matrix", "Matrix"),
+        new(AppearanceMode.Ice, "ice", "Ice"),
+        new(AppearanceMode.Sunset, "sunset", "Sunset"),
+        new(AppearanceMode.Neon, "neon", "Neon"),
+        new(AppearanceMode.Dracula, "dracula", "Dracula"),
+        new(AppearanceMode.Solarized, "solarized", "Solarized"),
+        new(AppearanceMode.Midnight, "midnight", "Midnight"),
+    ];
+
+    private static string GetThemeValue(AppearanceMode mode)
+        => Themes.FirstOrDefault(t => t.Mode == mode)?.Value ?? "dark";
+
+    private async Task OnThemeChanged(ChangeEventArgs e)
+    {
+        var value = (e.Value?.ToString() ?? "dark").Trim().ToLowerInvariant();
+        var mode = Themes.FirstOrDefault(t => t.Value == value)?.Mode ?? AppearanceMode.Dark;
+        await Set(mode);
+    }
+
+    private async Task Set(AppearanceMode mode)
+    {
+        Appearance.SetMode(mode);
+        await JS.InvokeVoidAsync("LLMThinkTank.setTheme", GetThemeValue(mode));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync("LLMThinkTank.setTheme", GetThemeValue(Appearance.Mode));
+    }
+}

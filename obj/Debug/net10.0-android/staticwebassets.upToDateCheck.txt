@@ -1,0 +1,7 @@
+wwwroot\theme.js
+wwwroot\lib\bootstrap\dist\css\bootstrap.min.css.map
+wwwroot\lib\bootstrap\dist\css\bootstrap.min.css
+wwwroot\index.html
+wwwroot\app.css
+C:\Users\ryand\.nuget\packages\microsoft.aspnetcore.components.webview\10.0.0\build\..\staticwebassets\blazor.webview.js
+C:\Users\ryand\.nuget\packages\microsoft.aspnetcore.components.webview\10.0.0\build\..\staticwebassets\blazor.modules.json
