@@ -1,4 +1,4 @@
-<api type="debug" assembly-name="LLMThinkTank" mvid="d336876620314bfe9c089ca575900f75">
+<api type="debug" assembly-name="LLMThinkTank" mvid="3a94968695ac4bc781d23b4613308fee">
   <java-to-managed>
     <entry java-name="crc64aba052e832484e69/MainActivity" managed-name="LLMThinkTank.MainActivity, LLMThinkTank" managed-type-token-id="33554457" />
     <entry java-name="crc64aba052e832484e69/MainApplication" managed-name="LLMThinkTank.MainApplication, LLMThinkTank" managed-type-token-id="33554458" />

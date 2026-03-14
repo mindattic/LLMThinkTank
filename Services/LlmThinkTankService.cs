@@ -303,11 +303,12 @@ public class LlmThinkTankService
             throw new Exception($"OpenAI {response.StatusCode}: {ExtractError(json)}");
 
         var doc = JsonDocument.Parse(json);
-        return doc.RootElement
+        var text = doc.RootElement
             .GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content")
             .GetString() ?? "";
+        return SanitizeModelOutput(providerId, text);
     }
 
     // ── Claude ───────────────────────────────────────────────────────────────
@@ -350,10 +351,11 @@ public class LlmThinkTankService
             throw new Exception($"Claude {response.StatusCode}: {ExtractError(json)}");
 
         var doc = JsonDocument.Parse(json);
-        return doc.RootElement
+        var text = doc.RootElement
             .GetProperty("content")[0]
             .GetProperty("text")
             .GetString() ?? "";
+        return SanitizeModelOutput(providerId, text);
     }
 
     // ── Gemini ───────────────────────────────────────────────────────────────
@@ -399,9 +401,9 @@ public class LlmThinkTankService
 
         var payload = new
         {
-            system_instruction = new { parts = new[] { new { text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" } } },
+            system_instruction = new { parts = new[] { new { text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"\n\nRespond with a single cohesive message. Do not split your answer into separate parts." } } },
             contents,
-            generationConfig = new { maxOutputTokens = 600 }
+            generationConfig = new { maxOutputTokens = 900 }
         };
 
         var model = GetModel("gemini", authOverrideJson, defaultModel: "gemini-2.0-flash-lite");
@@ -418,12 +420,30 @@ public class LlmThinkTankService
             throw new Exception($"Gemini {response.StatusCode}: {ExtractError(json)}");
 
         var doc = JsonDocument.Parse(json);
-        return doc.RootElement
+        var parts = doc.RootElement
             .GetProperty("candidates")[0]
             .GetProperty("content")
-            .GetProperty("parts")[0]
-            .GetProperty("text")
-            .GetString() ?? "";
+            .GetProperty("parts");
+
+        if (parts.ValueKind != JsonValueKind.Array)
+            return "";
+
+        var sb = new StringBuilder();
+        foreach (var p in parts.EnumerateArray())
+        {
+            if (!p.TryGetProperty("text", out var t))
+                continue;
+
+            var text = t.GetString();
+            if (string.IsNullOrEmpty(text))
+                continue;
+
+            if (sb.Length > 0)
+                sb.Append("\n");
+            sb.Append(text);
+        }
+
+        return SanitizeModelOutput(providerId, sb.ToString());
     }
 
     // ── DeepSeek ─────────────────────────────────────────────────────────────
@@ -454,11 +474,29 @@ public class LlmThinkTankService
             throw new Exception($"DeepSeek {response.StatusCode}: {ExtractError(json)}");
 
         var doc = JsonDocument.Parse(json);
-        return doc.RootElement
+        var text = doc.RootElement
             .GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content")
             .GetString() ?? "";
+        return SanitizeModelOutput(providerId, text);
+    }
+
+    private static string SanitizeModelOutput(string providerId, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        // Some models will incorrectly self-prefix turns with labels like "[ChatGPT]:".
+        // Strip repeated instances at the start of the response.
+        // Matches patterns like: "[ChatGPT]:", "ChatGPT:", "[Claude]:" etc.
+        // Keeps the rest of the content intact.
+        text = text.TrimStart();
+
+        var pattern = "^(?:\\s*(?:\\[(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek)\\]\\s*:|(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek)\\s*:))+\\s*";
+        text = System.Text.RegularExpressions.Regex.Replace(text, pattern, "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return text.TrimStart();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

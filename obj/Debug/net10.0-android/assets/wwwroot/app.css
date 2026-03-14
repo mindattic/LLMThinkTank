@@ -2,6 +2,14 @@
     font-family: 'Segoe UI', system-ui, sans-serif;
     background: var(--bg, #0a0a0f);
     color: var(--text, #e0e0f0);
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Prevent the MAUI WebView host from introducing page scrollbars */
+#app {
+    height: 100vh;
+    overflow: hidden;
 }
 
 html[data-theme="spring"] {
@@ -236,6 +244,12 @@ main {
 .status-log-item .status-text {
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+/* Ensure Think Tank chat uses inner scrolling */
+.messages {
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .settings-container {

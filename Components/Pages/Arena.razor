@@ -226,6 +226,10 @@
             if (_followConversation)
                 await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
         }
+
+        // Keep the follow flag accurate even when content height changes (new message, window resize, etc.)
+        // without forcing scroll.
+        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
     }
 
     private void RestoreFromConversationState()
@@ -291,6 +295,16 @@
     }
 
     private void OnConversationsChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        // When the active conversation changes, re-evaluate follow state and optionally snap to bottom.
+        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
+        if (_followConversation)
+            await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+    }
 
     private async Task OnMessagesScrolled()
     {
