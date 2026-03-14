@@ -2,8 +2,12 @@ wwwroot\_framework\blazor.modules.json
 wwwroot\_framework\blazor.webview.js
 Components\Layout\MainLayout.razor.css
 Components\Layout\NavMenu.razor.css
+LLMThinkTank.UnitTests\bin\Debug\net10.0\LLMThinkTank.UnitTests.deps.json
+LLMThinkTank.UnitTests\bin\Debug\net10.0\LLMThinkTank.UnitTests.runtimeconfig.json
 LLMThinkTank.UnitTests\bin\Debug\net10.0-windows10.0.19041.0\LLMThinkTank.UnitTests.deps.json
 LLMThinkTank.UnitTests\bin\Debug\net10.0-windows10.0.19041.0\LLMThinkTank.UnitTests.runtimeconfig.json
+LLMThinkTank.UnitTests\obj\Debug\net10.0\LLMThinkTank.UnitTests.sourcelink.json
+LLMThinkTank.UnitTests\obj\Debug\net10.0-windows10.0.19041.0\LLMThinkTank.UnitTests.sourcelink.json
 LLMThinkTank.UnitTests\obj\LLMThinkTank.UnitTests.csproj.nuget.dgspec.json
 LLMThinkTank.UnitTests\obj\project.assets.json
 OpenSans-Regular.ttf

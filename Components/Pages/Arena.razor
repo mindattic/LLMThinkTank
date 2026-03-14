@@ -2,6 +2,7 @@
 @inject LlmThinkTankService ThinkTankService
 @inject SettingsService Settings
 @inject ChatConversationsService Conversations
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>LLM Think Tank</PageTitle>
@@ -37,7 +38,7 @@
     {
         <div class="setup-panel">
             <label>Discussion prompt</label>
-            <textarea @bind="ActiveState.Topic" rows="3" placeholder="e.g. Is consciousness computational?" />
+            <textarea value="@Active.Topic" @oninput="OnTopicInput" rows="3" placeholder="e.g. Is consciousness computational?" />
 
             <div class="participants">
                 <label>Participants</label>
@@ -92,7 +93,7 @@
                     </div>
                 </aside>
 
-                <div class="messages">
+                <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
                     @foreach (var msg in ActiveState.Messages)
                     {
                         var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
@@ -128,20 +129,46 @@
         </div>
 
         <div class="status-log">
-            <div class="status-log-header">Status log</div>
+            <div class="status-log-header">
+                <span>Status log</span>
+                <span class="status-log-tabs">
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Perspective ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Perspective)">Perspective</button>
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Diagnostics ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Diagnostics)">Diagnostics</button>
+                </span>
+            </div>
             <div class="status-log-items">
-                @if (ActiveState.StatusEvents.Count == 0)
+                @if (_activeStatusTab == StatusTab.Perspective)
                 {
-                    <div class="status-log-empty">No status events yet.</div>
+                    @if (ActiveState.StatusEvents.Count == 0)
+                    {
+                        <div class="status-log-empty">No status events yet.</div>
+                    }
+                    else
+                    {
+                        @foreach (var e in ActiveState.StatusEvents)
+                        {
+                            <div class="status-log-item">
+                                <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                                <span class="status-text">@e.Text</span>
+                            </div>
+                        }
+                    }
                 }
                 else
                 {
-                    @foreach (var e in ActiveState.StatusEvents)
+                    @if (ActiveState.Diagnostics.Count == 0)
                     {
-                        <div class="status-log-item">
-                            <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
-                            <span class="status-text">@e.Text</span>
-                        </div>
+                        <div class="status-log-empty">No diagnostics yet.</div>
+                    }
+                    else
+                    {
+                        @foreach (var e in ActiveState.Diagnostics)
+                        {
+                            <div class="status-log-item">
+                                <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                                <span class="status-text">@e.Text</span>
+                            </div>
+                        }
                     }
                 }
             </div>
@@ -150,19 +177,125 @@
 </div>
 
 @code {
+    private enum StatusTab { Perspective, Diagnostics }
+    private StatusTab _activeStatusTab = StatusTab.Perspective;
     private ChatConversation? Active => Conversations.ActiveConversation;
     private ConversationUiState ActiveState => GetState(Active);
 
     private readonly Dictionary<string, ConversationUiState> _states = new();
 
+    private ElementReference _messagesDiv;
+    private bool _followConversation = true;
+    private int _lastRenderedMessageCount;
+
     protected override void OnInitialized()
     {
         Conversations.Changed += OnConversationsChanged;
+        ThinkTankService.Diagnostics += OnDiagnostics;
+        RestoreFromConversationState();
+        _ = RestoreAllAsync();
         if (Conversations.Conversations.Count == 0)
             NewTab();
     }
 
+    private void OnDiagnostics(string providerId, string raw, bool isError)
+    {
+        if (Active is null)
+            return;
+
+        var ts = DateTimeOffset.UtcNow;
+        var prefix = isError ? $"{providerId.ToUpperInvariant()} ERROR" : $"{providerId.ToUpperInvariant()} OK";
+        var text = $"{prefix}: {raw}";
+        if (text.Length > 4000)
+            text = text[..4000] + "…";
+
+        var e = new SettingsService.PersistedStatusEvent(ts, text);
+        Active.Diagnostics.Add(e);
+        ActiveState.Diagnostics.Add(new StatusEvent(e.Timestamp, e.Text));
+        Conversations.NotifyChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        var count = ActiveState.Messages.Count;
+        if (count != _lastRenderedMessageCount)
+        {
+            _lastRenderedMessageCount = count;
+            if (_followConversation)
+                await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+        }
+    }
+
+    private void RestoreFromConversationState()
+    {
+        foreach (var c in Conversations.Conversations)
+        {
+            var state = GetState(c);
+            state.Messages.Clear();
+            foreach (var m in c.Messages)
+            {
+                state.Messages.Add(new ConversationUiMessage
+                {
+                    ParticipantId = m.ParticipantId,
+                    Text = m.Text,
+                    Round = m.Round,
+                    IsError = m.IsError
+                });
+            }
+
+            state.StatusEvents.Clear();
+            foreach (var e in c.StatusEvents)
+                state.StatusEvents.Add(new StatusEvent(e.Timestamp, e.Text));
+
+            state.Diagnostics.Clear();
+            foreach (var e in c.Diagnostics)
+                state.Diagnostics.Add(new StatusEvent(e.Timestamp, e.Text));
+        }
+    }
+
+    private async Task RestoreAllAsync()
+    {
+        foreach (var c in Conversations.Conversations)
+        {
+            try
+            {
+                var turns = await ChatStorage.LoadTurnsAsync(c.ChatId);
+                if (turns.Count == 0)
+                    continue;
+
+                var state = GetState(c);
+                state.Messages.Clear();
+                c.Messages.Clear();
+                foreach (var t in turns)
+                {
+                    var msg = new ConversationUiMessage
+                    {
+                        ParticipantId = t.ParticipantId,
+                        Text = t.Text,
+                        Round = t.Round,
+                        IsError = t.IsError
+                    };
+
+                    state.Messages.Add(msg);
+                    c.Messages.Add(new SettingsService.PersistedMessage(msg.ParticipantId, msg.Text, msg.Round, msg.IsError));
+                }
+
+                Conversations.NotifyChanged();
+            }
+            catch { }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     private void OnConversationsChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task OnMessagesScrolled()
+    {
+        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
+    }
 
     private ConversationUiState GetState(ChatConversation? c)
     {
@@ -211,7 +344,17 @@
             ProviderId: t.ProviderId,
             DisplayName: t.DisplayName,
             PersonalityMarkdown: t.PersonalityMarkdown,
+            CustomInstructions: t.CustomInstructions,
             AuthOverrideJson: t.AuthOverrideJson));
+    }
+
+    private void OnTopicInput(ChangeEventArgs e)
+    {
+        if (Active is null)
+            return;
+
+        Active.Topic = e.Value?.ToString() ?? "";
+        Conversations.NotifyChanged();
     }
 
     private string GetProviderAvatar(string providerId)
@@ -225,7 +368,7 @@
         var state = ActiveState;
         state.Error = null;
 
-        if (string.IsNullOrWhiteSpace(state.Topic)) { state.Error = "Please enter a discussion prompt."; return; }
+        if (string.IsNullOrWhiteSpace(Active.Topic)) { state.Error = "Please enter a discussion prompt."; return; }
         if (Active.Participants.Count < 2) { state.Error = "Pick at least 2 participants."; return; }
 
         state.Running = true;
@@ -235,7 +378,8 @@
         state.TotalTurns = 0;
 
         var sharedHistory = new List<SharedTurn>();
-        await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = state.Topic, ts = DateTimeOffset.UtcNow });
+        Conversations.NotifyChanged();
+        await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = Active.Topic, ts = DateTimeOffset.UtcNow });
 
         var round = 0;
         while (!state.StopRequested)
@@ -252,7 +396,11 @@
 
                 try
                 {
-                    var response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, state.Topic, sharedHistory);
+                    var personality = string.IsNullOrWhiteSpace(p.CustomInstructions)
+                        ? p.PersonalityMarkdown
+                        : $"{p.PersonalityMarkdown}\n\n# Custom instructions\n\n{p.CustomInstructions}";
+
+                    var response = await ThinkTankService.CallProvider(p.ProviderId, personality, p.AuthOverrideJson, Active.Topic!, sharedHistory);
 
                     sharedHistory.Add(new SharedTurn
                     {
@@ -268,6 +416,8 @@
                         Text = response,
                         Round = round
                     });
+
+                    Active.Messages.Add(new SettingsService.PersistedMessage(p.ParticipantId, response, round, false));
 
                     await ChatStorage.AppendChatJsonAsync(Active.ChatId, new
                     {
@@ -288,6 +438,8 @@
                     // Stub "status events" to show cross-participant observations.
                     // Later this should be generated by each participant updating its own perspective and emitting diffs.
                     state.StatusEvents.Add(new StatusEvent(DateTimeOffset.UtcNow, $"{p.DisplayName} updated their perspective for this chat."));
+                    Active.StatusEvents.Add(new SettingsService.PersistedStatusEvent(DateTimeOffset.UtcNow, $"{p.DisplayName} updated their perspective for this chat."));
+                    Conversations.NotifyChanged();
                 }
                 catch (Exception ex)
                 {
@@ -298,6 +450,9 @@
                         Round = round,
                         IsError = true
                     });
+
+                    Active.Messages.Add(new SettingsService.PersistedMessage(p.ParticipantId, $"[Error: {ex.Message}]", round, true));
+                    Conversations.NotifyChanged();
                 }
 
                 state.CompletedTurns++;
@@ -329,6 +484,7 @@
     public void Dispose()
     {
         Conversations.Changed -= OnConversationsChanged;
+        ThinkTankService.Diagnostics -= OnDiagnostics;
     }
 
     private class ConversationUiMessage
@@ -351,6 +507,7 @@
         public double ProgressPct => TotalTurns == 0 ? 0 : (CompletedTurns / (double)TotalTurns) * 100;
         public List<ConversationUiMessage> Messages { get; } = new();
         public List<StatusEvent> StatusEvents { get; } = new();
+        public List<StatusEvent> Diagnostics { get; } = new();
     }
 
     private record StatusEvent(DateTimeOffset Timestamp, string Text);

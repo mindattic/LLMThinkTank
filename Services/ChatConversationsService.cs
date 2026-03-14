@@ -7,6 +7,7 @@ public record ParticipantTemplate(
     string ProviderId,
     string DisplayName,
     string PersonalityMarkdown,
+    string? CustomInstructions,
     string? AuthOverrideJson);
 
 public record ChatParticipant(
@@ -15,6 +16,7 @@ public record ChatParticipant(
     string ProviderId,
     string DisplayName,
     string PersonalityMarkdown,
+    string? CustomInstructions,
     string? AuthOverrideJson);
 
 public class ChatConversation
@@ -22,6 +24,12 @@ public class ChatConversation
     public string ChatId { get; }
     public string Title { get; set; }
     public ObservableCollection<ChatParticipant> Participants { get; } = new();
+    public string? Topic { get; set; }
+
+    // Persisted UI state
+    public List<SettingsService.PersistedMessage> Messages { get; } = new();
+    public List<SettingsService.PersistedStatusEvent> StatusEvents { get; } = new();
+    public List<SettingsService.PersistedStatusEvent> Diagnostics { get; } = new();
 
     public ChatConversation(string chatId, string title)
     {
@@ -49,6 +57,17 @@ public class ChatConversationsService
             foreach (var c in s.Conversations)
             {
                 var convo = new ChatConversation(c.ChatId, c.Title);
+                convo.Topic = c.Topic;
+
+                if (c.Messages is not null)
+                    convo.Messages.AddRange(c.Messages);
+
+                if (c.StatusEvents is not null)
+                    convo.StatusEvents.AddRange(c.StatusEvents);
+
+                if (c.Diagnostics is not null)
+                    convo.Diagnostics.AddRange(c.Diagnostics);
+
                 foreach (var p in c.Participants)
                 {
                     convo.Participants.Add(new ChatParticipant(
@@ -57,6 +76,7 @@ public class ChatConversationsService
                         p.ProviderId,
                         p.DisplayName,
                         p.PersonalityMarkdown,
+                        p.CustomInstructions,
                         p.AuthOverrideJson));
                 }
 
@@ -120,7 +140,14 @@ public class ChatConversationsService
                 p.ProviderId,
                 p.DisplayName,
                 p.PersonalityMarkdown,
+                p.CustomInstructions,
                 p.AuthOverrideJson)).ToList(),
-            Topic: null)));
+            Topic: c.Topic,
+            Messages: c.Messages.Count == 0 ? null : new List<SettingsService.PersistedMessage>(c.Messages))
+        {
+            StatusEvents = c.StatusEvents.Count == 0 ? null : new List<SettingsService.PersistedStatusEvent>(c.StatusEvents)
+            ,
+            Diagnostics = c.Diagnostics.Count == 0 ? null : new List<SettingsService.PersistedStatusEvent>(c.Diagnostics)
+        }));
     }
 }

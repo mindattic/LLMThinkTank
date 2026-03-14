@@ -207,6 +207,37 @@ main {
     width: 100%;
 }
 
+/* Think Tank status log tabs */
+.status-log-tabs {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.status-log-tab {
+    border: 1px solid var(--border, rgba(255,255,255,0.15));
+    background: color-mix(in srgb, var(--surface, #111) 70%, transparent);
+    color: var(--text, #e0e0f0);
+    padding: 6px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.status-log-tab:hover {
+    background: color-mix(in srgb, var(--surface, #111) 85%, transparent);
+    border-color: color-mix(in srgb, var(--border, #333) 80%, var(--text, #fff) 20%);
+}
+
+.status-log-tab.active {
+    background: color-mix(in srgb, var(--surface, #111) 90%, var(--gemini, #60a5fa) 10%);
+    border-color: color-mix(in srgb, var(--border, #333) 60%, var(--gemini, #60a5fa) 40%);
+}
+
+.status-log-item .status-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .settings-container {
     width: 100%;
     min-height: calc(100vh - 3.25rem);

@@ -1,10 +1,10 @@
-<api type="debug" assembly-name="LLMThinkTank" mvid="f7e9961ffc944cec895be656c5d66e80">
+<api type="debug" assembly-name="LLMThinkTank" mvid="d336876620314bfe9c089ca575900f75">
   <java-to-managed>
-    <entry java-name="crc64aba052e832484e69/MainActivity" managed-name="LLMThinkTank.MainActivity, LLMThinkTank" managed-type-token-id="33554451" />
-    <entry java-name="crc64aba052e832484e69/MainApplication" managed-name="LLMThinkTank.MainApplication, LLMThinkTank" managed-type-token-id="33554452" />
+    <entry java-name="crc64aba052e832484e69/MainActivity" managed-name="LLMThinkTank.MainActivity, LLMThinkTank" managed-type-token-id="33554457" />
+    <entry java-name="crc64aba052e832484e69/MainApplication" managed-name="LLMThinkTank.MainApplication, LLMThinkTank" managed-type-token-id="33554458" />
   </java-to-managed>
   <managed-to-java>
-    <entry java-name="crc64aba052e832484e69/MainActivity" managed-name="LLMThinkTank.MainActivity, LLMThinkTank" managed-type-token-id="33554451" />
-    <entry java-name="crc64aba052e832484e69/MainApplication" managed-name="LLMThinkTank.MainApplication, LLMThinkTank" managed-type-token-id="33554452" />
+    <entry java-name="crc64aba052e832484e69/MainActivity" managed-name="LLMThinkTank.MainActivity, LLMThinkTank" managed-type-token-id="33554457" />
+    <entry java-name="crc64aba052e832484e69/MainApplication" managed-name="LLMThinkTank.MainApplication, LLMThinkTank" managed-type-token-id="33554458" />
   </managed-to-java>
 </api>

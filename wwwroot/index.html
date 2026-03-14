@@ -24,6 +24,18 @@
     </div>
 
     <script src="theme.js"></script>
+    <script>
+        window.LLMThinkTank = window.LLMThinkTank || {};
+        window.LLMThinkTank.isNearBottom = (el, thresholdPx) => {
+            if (!el) return true;
+            const threshold = thresholdPx ?? 60;
+            return (el.scrollTop + el.clientHeight) >= (el.scrollHeight - threshold);
+        };
+        window.LLMThinkTank.scrollToBottom = (el) => {
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+        };
+    </script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
 </body>

@@ -91,6 +91,113 @@ public class LlmThinkTankService
             _          => throw new ArgumentException($"Unknown provider: {providerId}")
         };
 
+    public event Action<string, string, bool>? Diagnostics;
+
+    private void EmitDiagnostics(string providerId, string raw, bool isError)
+    {
+        try { Diagnostics?.Invoke(providerId, RedactResponseText(providerId, raw), isError); }
+        catch { }
+    }
+
+    private static string RedactResponseText(string providerId, string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return raw;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+
+            object? redacted = providerId switch
+            {
+                "openai" => RedactOpenAi(doc.RootElement),
+                "deepseek" => RedactOpenAi(doc.RootElement),
+                "claude" => RedactClaude(doc.RootElement),
+                "gemini" => RedactGemini(doc.RootElement),
+                _ => null
+            };
+
+            if (redacted is null)
+                return raw;
+
+            return JsonSerializer.Serialize(redacted, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return raw;
+        }
+    }
+
+    private static object? RedactOpenAi(JsonElement root)
+    {
+        if (!root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var newChoices = new List<object>();
+        foreach (var c in choices.EnumerateArray())
+        {
+            var messageRole = c.TryGetProperty("message", out var msg) && msg.TryGetProperty("role", out var role)
+                ? role.GetString()
+                : null;
+
+            newChoices.Add(new
+            {
+                index = c.TryGetProperty("index", out var idx) ? idx.GetInt32() : (int?)null,
+                finish_reason = c.TryGetProperty("finish_reason", out var fr) ? fr.GetString() : null,
+                message = new { role = messageRole, content = "..." }
+            });
+        }
+
+        return new
+        {
+            id = root.TryGetProperty("id", out var id) ? id.GetString() : null,
+            model = root.TryGetProperty("model", out var model) ? model.GetString() : null,
+            created = root.TryGetProperty("created", out var created) ? created.GetInt64() : (long?)null,
+            usage = root.TryGetProperty("usage", out var usage) ? usage : (JsonElement?)null,
+            choices = newChoices
+        };
+    }
+
+    private static object? RedactClaude(JsonElement root)
+    {
+        if (!root.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+            return null;
+
+        return new
+        {
+            id = root.TryGetProperty("id", out var id) ? id.GetString() : null,
+            model = root.TryGetProperty("model", out var model) ? model.GetString() : null,
+            type = root.TryGetProperty("type", out var type) ? type.GetString() : null,
+            stop_reason = root.TryGetProperty("stop_reason", out var sr) ? sr.GetString() : null,
+            usage = root.TryGetProperty("usage", out var usage) ? usage : (JsonElement?)null,
+            content = new[] { new { type = "text", text = "..." } }
+        };
+    }
+
+    private static object? RedactGemini(JsonElement root)
+    {
+        if (!root.TryGetProperty("candidates", out var cands) || cands.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var newCands = new List<object>();
+        foreach (var c in cands.EnumerateArray())
+        {
+            newCands.Add(new
+            {
+                finishReason = c.TryGetProperty("finishReason", out var fr) ? fr.GetString() : null,
+                safetyRatings = c.TryGetProperty("safetyRatings", out var sr) ? sr : (JsonElement?)null,
+                content = new { role = "model", parts = new[] { new { text = "..." } } }
+            });
+        }
+
+        return new
+        {
+            candidates = newCands,
+            promptFeedback = root.TryGetProperty("promptFeedback", out var pf) ? pf : (JsonElement?)null,
+            usageMetadata = root.TryGetProperty("usageMetadata", out var um) ? um : (JsonElement?)null
+        };
+    }
+
     private string GetApiKey(string providerId, string? authOverrideJson)
     {
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
@@ -190,6 +297,8 @@ public class LlmThinkTankService
         var response = await _http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
+        EmitDiagnostics("openai", json, isError: !response.IsSuccessStatusCode);
+
         if (!response.IsSuccessStatusCode)
             throw new Exception($"OpenAI {response.StatusCode}: {ExtractError(json)}");
 
@@ -234,6 +343,8 @@ public class LlmThinkTankService
 
         var response = await _http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
+
+        EmitDiagnostics("claude", json, isError: !response.IsSuccessStatusCode);
 
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Claude {response.StatusCode}: {ExtractError(json)}");
@@ -290,7 +401,7 @@ public class LlmThinkTankService
         {
             system_instruction = new { parts = new[] { new { text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" } } },
             contents,
-            generationConfig = new { maxOutputTokens = 200 }
+            generationConfig = new { maxOutputTokens = 600 }
         };
 
         var model = GetModel("gemini", authOverrideJson, defaultModel: "gemini-2.0-flash-lite");
@@ -300,6 +411,8 @@ public class LlmThinkTankService
 
         var response = await _http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
+
+        EmitDiagnostics("gemini", json, isError: !response.IsSuccessStatusCode);
 
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Gemini {response.StatusCode}: {ExtractError(json)}");
@@ -334,6 +447,8 @@ public class LlmThinkTankService
 
         var response = await _http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
+
+        EmitDiagnostics("deepseek", json, isError: !response.IsSuccessStatusCode);
 
         if (!response.IsSuccessStatusCode)
             throw new Exception($"DeepSeek {response.StatusCode}: {ExtractError(json)}");

@@ -12,12 +12,12 @@
       <RelatedAsset></RelatedAsset>
       <AssetTraitName></AssetTraitName>
       <AssetTraitValue></AssetTraitValue>
-      <Fingerprint>n3l2z4uaj0</Fingerprint>
-      <Integrity>rTVd9zFJLQel2g5Y3GQst1/e3hbEunXedwbfbLGT4mg=</Integrity>
+      <Fingerprint>uytflvx9wk</Fingerprint>
+      <Integrity>dqag6MmcdPA/iw+hNNE5hu/Psrd9YINIi3x6peOJBTU=</Integrity>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <FileLength>33598</FileLength>
-      <LastWriteTime>Sat, 14 Mar 2026 18:11:44 GMT</LastWriteTime>
+      <FileLength>34490</FileLength>
+      <LastWriteTime>Sat, 14 Mar 2026 19:28:13 GMT</LastWriteTime>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\app.css'))</OriginalItemSpec>
     </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\index.html'))">
@@ -32,12 +32,12 @@
       <RelatedAsset></RelatedAsset>
       <AssetTraitName></AssetTraitName>
       <AssetTraitValue></AssetTraitValue>
-      <Fingerprint>1maw1m4ua6</Fingerprint>
-      <Integrity>R4kr5p1HWlXoGfZwcaMmWqLBAv5jYDPIDD9HXUz5Nks=</Integrity>
+      <Fingerprint>kysgwrgo3k</Fingerprint>
+      <Integrity>ZJ1m4TBM+yCdQpvqREgM3prIPQMWcq+KbMV1coTzyas=</Integrity>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <FileLength>924</FileLength>
-      <LastWriteTime>Sat, 14 Mar 2026 17:38:26 GMT</LastWriteTime>
+      <FileLength>1405</FileLength>
+      <LastWriteTime>Sat, 14 Mar 2026 19:19:40 GMT</LastWriteTime>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\index.html'))</OriginalItemSpec>
     </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\lib\bootstrap\dist\css\bootstrap.min.css'))">
@@ -97,7 +97,7 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <FileLength>1391</FileLength>
-      <LastWriteTime>Sat, 14 Mar 2026 18:29:34 GMT</LastWriteTime>
+      <LastWriteTime>Sat, 14 Mar 2026 19:04:03 GMT</LastWriteTime>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\LLMThinkTank.styles.css'))</OriginalItemSpec>
     </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\theme.js'))">

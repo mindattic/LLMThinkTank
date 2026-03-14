@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LLMThinkTank")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0+0879346a2240f8354d448ddde2949b849d7d4695")]
 [assembly: System.Reflection.AssemblyProductAttribute("LLMThinkTank")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LLMThinkTank")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

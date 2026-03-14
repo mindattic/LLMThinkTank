@@ -28,7 +28,7 @@ public class ChatLogService
 public static class ChatStorage
 {
     public static string GetChatFolder(string chatId)
-        => Path.Combine(FileSystem.AppDataDirectory, "Chats", chatId);
+        => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "LLMThinkTank", "Conversations", chatId);
 
     public static string GetChatJsonPath(string chatId)
         => Path.Combine(GetChatFolder(chatId), "chat.json");
@@ -78,4 +78,32 @@ public static class ChatStorage
         var path = GetPerspectivePath(chatId, modelId);
         return File.WriteAllTextAsync(path, markdown, cancellationToken);
     }
+
+    public static async Task<List<PersistedTurn>> LoadTurnsAsync(string chatId, CancellationToken cancellationToken = default)
+    {
+        var path = GetChatJsonPath(chatId);
+        if (!File.Exists(path))
+            return new();
+
+        await using var read = File.OpenRead(path);
+        var items = await JsonSerializer.DeserializeAsync<List<JsonElement>>(read, cancellationToken: cancellationToken) ?? new();
+
+        var turns = new List<PersistedTurn>();
+        foreach (var item in items)
+        {
+            if (!item.TryGetProperty("type", out var type) || type.GetString() != "turn")
+                continue;
+
+            var participantId = item.TryGetProperty("participantId", out var pid) ? pid.GetString() ?? "" : "";
+            var text = item.TryGetProperty("text", out var textElem) ? textElem.GetString() ?? "" : "";
+            var round = item.TryGetProperty("round", out var roundElem) ? roundElem.GetInt32() : 0;
+            var isError = item.TryGetProperty("isError", out var errElem) && errElem.ValueKind == JsonValueKind.True;
+
+            turns.Add(new PersistedTurn(participantId, text, round, isError));
+        }
+
+        return turns;
+    }
+
+    public sealed record PersistedTurn(string ParticipantId, string Text, int Round, bool IsError);
 }

@@ -24,13 +24,20 @@ public class LlmThinkTankSettingsService
     private static string SettingsRoot
         => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MindAttic", "LLMThinkTank");
 
+    private static string PersonalitiesRoot
+        => Path.Combine(SettingsRoot, "Personalities");
+
     private static string SettingsPath
         => Path.Combine(SettingsRoot, SettingsFileName);
 
     private void LoadOrInit()
     {
         if (TryLoad())
+        {
+            EnsureDefaultsIfMissing();
+            EnsurePersonalityFiles();
             return;
+        }
 
         ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-5\"\n}");
         ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\"\n}");
@@ -42,6 +49,7 @@ public class LlmThinkTankSettingsService
             ProviderId: "openai",
             DisplayName: "ChatGPT",
             PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
+            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -49,6 +57,7 @@ public class LlmThinkTankSettingsService
             ProviderId: "claude",
             DisplayName: "Claude",
             PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
+            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -56,6 +65,7 @@ public class LlmThinkTankSettingsService
             ProviderId: "gemini",
             DisplayName: "Gemini",
             PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
+            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -63,10 +73,84 @@ public class LlmThinkTankSettingsService
             ProviderId: "deepseek",
             DisplayName: "DeepSeek",
             PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
+            CustomInstructions: null,
             AuthOverrideJson: null));
 
         AppearanceTheme = "dark";
+        EnsurePersonalityFiles();
         Save();
+    }
+
+    private void EnsureDefaultsIfMissing()
+    {
+        try
+        {
+            if (Templates.Count > 0)
+                return;
+
+            Templates.Add(new ParticipantTemplate(
+                TemplateId: ChatConversationsService.NewId(),
+                ProviderId: "openai",
+                DisplayName: "ChatGPT",
+                PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
+                CustomInstructions: null,
+                AuthOverrideJson: null));
+
+            Templates.Add(new ParticipantTemplate(
+                TemplateId: ChatConversationsService.NewId(),
+                ProviderId: "claude",
+                DisplayName: "Claude",
+                PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
+                CustomInstructions: null,
+                AuthOverrideJson: null));
+
+            Templates.Add(new ParticipantTemplate(
+                TemplateId: ChatConversationsService.NewId(),
+                ProviderId: "gemini",
+                DisplayName: "Gemini",
+                PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
+                CustomInstructions: null,
+                AuthOverrideJson: null));
+
+            Templates.Add(new ParticipantTemplate(
+                TemplateId: ChatConversationsService.NewId(),
+                ProviderId: "deepseek",
+                DisplayName: "DeepSeek",
+                PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
+                CustomInstructions: null,
+                AuthOverrideJson: null));
+
+            Save();
+        }
+        catch { }
+    }
+
+    private void EnsurePersonalityFiles()
+    {
+        try
+        {
+            Directory.CreateDirectory(PersonalitiesRoot);
+
+            WriteIfMissing("OpenAI.md",
+                "# OpenAI\n\nYou are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.\n");
+
+            WriteIfMissing("Claude.md",
+                "# Claude\n\nYou are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.\n");
+
+            WriteIfMissing("Gemini.md",
+                "# Gemini\n\nYou are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.\n");
+
+            WriteIfMissing("DeepSeek.md",
+                "# DeepSeek\n\nYou are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.\n");
+        }
+        catch { }
+
+        void WriteIfMissing(string fileName, string markdown)
+        {
+            var path = Path.Combine(PersonalitiesRoot, fileName);
+            if (!File.Exists(path))
+                File.WriteAllText(path, markdown);
+        }
     }
 
     private bool TryLoad()
@@ -204,7 +288,22 @@ public class LlmThinkTankSettingsService
         string ChatId,
         string Title,
         List<PersistedParticipant> Participants,
-        string? Topic);
+        string? Topic,
+        List<PersistedMessage>? Messages)
+    {
+        public List<PersistedStatusEvent>? StatusEvents { get; init; }
+        public List<PersistedStatusEvent>? Diagnostics { get; init; }
+    }
+
+    public sealed record PersistedMessage(
+        string ParticipantId,
+        string Text,
+        int Round,
+        bool IsError);
+
+    public sealed record PersistedStatusEvent(
+        DateTimeOffset Timestamp,
+        string Text);
 
     public sealed record PersistedParticipant(
         string ParticipantId,
@@ -212,5 +311,6 @@ public class LlmThinkTankSettingsService
         string ProviderId,
         string DisplayName,
         string PersonalityMarkdown,
+        string? CustomInstructions,
         string? AuthOverrideJson);
 }

@@ -82,6 +82,8 @@
         <Compile Remove="bin\**\*.cs" />
         <None Remove="obj\**\*" />
         <None Remove="bin\**\*" />
+        <Compile Remove="LLMThinkTank.UnitTests\**\*.cs" />
+        <None Remove="LLMThinkTank.UnitTests\**\*" />
     </ItemGroup>
 
 </Project>

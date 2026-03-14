@@ -4,3 +4,42 @@
 
 /.vs
 /bin/Debug
+# Build outputs
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pdb
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# NuGet
+**/packages/
+*.nupkg
+*.snupkg
+
+# Logs
+*.log
+
+# Test results / coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Local app data (never commit)
+Settings.json
+Conversations/
+Personalities/

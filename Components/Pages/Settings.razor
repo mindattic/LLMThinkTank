@@ -99,6 +99,9 @@
                         <label>Personality (markdown)</label>
                         <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="10">@_activeTemplate.PersonalityMarkdown</textarea>
 
+                        <label>Custom instructions (biases / rules)</label>
+                        <textarea class="settings-textarea" @oninput="OnTemplateCustomInstructionsChanged" rows="6">@(_activeTemplate.CustomInstructions ?? "")</textarea>
+
                         <div class="settings-row">
                             <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
                             <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(ThinkTankSettings.Templates.Count <= 1)">Remove</button>
@@ -351,6 +354,7 @@
             ProviderId: providerId,
             DisplayName: $"{firstName} ({llmName})",
             PersonalityMarkdown: await GenerateStarterPersonality(providerId, firstName, llmName),
+            CustomInstructions: null,
             AuthOverrideJson: null);
 
         ThinkTankSettings.Templates.Add(template);
@@ -433,6 +437,12 @@
     {
         var v = e.Value?.ToString();
         UpdateActiveTemplate(t => t with { AuthOverrideJson = string.IsNullOrWhiteSpace(v) ? null : v });
+    }
+
+    private void OnTemplateCustomInstructionsChanged(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        UpdateActiveTemplate(t => t with { CustomInstructions = string.IsNullOrWhiteSpace(v) ? null : v });
     }
 
     private async Task TestTemplate()
