@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(git push:*)",
+      "Bash(find D:ProjectsLLMThinkTankComponentsPages -name *.css)",
+      "Bash(find D:ProjectsLLMThinkTankwwwroot -name *.css)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
