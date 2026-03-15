@@ -95,10 +95,24 @@ public class LlmThinkTankSettingsService
 
             foreach (var d in defaults)
             {
-                // Check if a default template for this provider already exists
-                if (!Templates.Any(t => t.IsDefault && t.ProviderId == d.ProviderId))
+                // Check if any template for this provider exists (default or otherwise)
+                if (!Templates.Any(t => t.ProviderId == d.ProviderId && t.IsDefault))
                 {
-                    Templates.Insert(0, d);
+                    // Insert defaults at the front, preserving order
+                    var insertIdx = Templates.Count(t => t.IsDefault);
+                    Templates.Insert(insertIdx, d);
+                    changed = true;
+                }
+            }
+
+            // Also mark any old templates that match default names as IsDefault
+            // (handles migration from pre-IsDefault settings)
+            var defaultNames = new HashSet<string>(defaults.Select(d => d.DisplayName));
+            for (var i = 0; i < Templates.Count; i++)
+            {
+                if (!Templates[i].IsDefault && defaultNames.Contains(Templates[i].DisplayName))
+                {
+                    Templates[i] = Templates[i] with { IsDefault = true };
                     changed = true;
                 }
             }
