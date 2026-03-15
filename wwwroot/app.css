@@ -305,6 +305,8 @@ main {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .chat-header {
@@ -1156,6 +1158,7 @@ html, body {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem;
+    overflow: hidden;
 }
 
 .conversation-grid {
@@ -1287,7 +1290,6 @@ html, body {
     padding: 1rem 1.2rem;
     border: 1px solid var(--border);
     animation: slideIn 0.3s ease;
-    overflow: hidden;
     min-width: 0;
 }
 
