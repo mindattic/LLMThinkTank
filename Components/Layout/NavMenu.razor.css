@@ -3,8 +3,8 @@
     display: flex;
     align-items: center;
     height: 3.25rem;
-    margin: 14px 0 10px;
-    padding: 0 1.25rem;
+    margin: 0;
+    padding: 10px 1.25rem;
     background: var(--surface, #12121a);
     border-bottom: none;
     position: sticky;
@@ -15,10 +15,13 @@
 .nav-brand {
     font-size: 1.05rem;
     font-weight: 800;
-    color: var(--text, #e0e0f0);
     text-decoration: none;
     letter-spacing: -0.5px;
     margin-right: 1.5rem;
+    background: var(--title-gradient, var(--text, #e0e0f0));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .nav-tabs {

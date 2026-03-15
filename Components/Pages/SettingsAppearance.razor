@@ -11,6 +11,12 @@
             <option value="@t.Value">@t.Label</option>
         }
     </select>
+
+    <label>Control Height — @(Appearance.ControlHeight)px</label>
+    <input type="range" min="28" max="60" step="2"
+           value="@Appearance.ControlHeight"
+           @oninput="OnControlHeightChanged"
+           class="settings-range" />
 </div>
 
 @code {
@@ -43,6 +49,15 @@
         await Set(mode);
     }
 
+    private async Task OnControlHeightChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px))
+        {
+            Appearance.SetControlHeight(px);
+            await JS.InvokeVoidAsync("LLMThinkTank.setControlHeight", px);
+        }
+    }
+
     private async Task Set(AppearanceMode mode)
     {
         Appearance.SetMode(mode);
@@ -55,5 +70,6 @@
             return;
 
         await JS.InvokeVoidAsync("LLMThinkTank.setTheme", GetThemeValue(Appearance.Mode));
+        await JS.InvokeVoidAsync("LLMThinkTank.setControlHeight", Appearance.ControlHeight);
     }
 }

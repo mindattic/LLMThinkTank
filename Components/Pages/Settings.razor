@@ -78,7 +78,20 @@
                     <div class="templates-left">
                         <div class="templates-left-header">
                             <span>Personalities</span>
-                            <button class="settings-tab" @onclick="AddTemplate">+ Add</button>
+                            <div class="add-dropdown">
+                                <button class="settings-tab" @onclick="ToggleAddDropdown">+ Add</button>
+                                @if (_showAddDropdown)
+                                {
+                                    <div class="add-dropdown-menu">
+                                        @foreach (var p in _providerOptions)
+                                        {
+                                            <button class="add-dropdown-item" @onclick="(() => AddTemplateForProvider(p.Id))">
+                                                <span>@GetProviderAvatar(p.Id)</span> @p.Name
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
                         <div class="templates-left-list">
                             @foreach (var t in ThinkTankSettings.Templates)
@@ -105,8 +118,10 @@
                                 }
                             </select>
 
+                            @* Custom Auth Config - hidden for now, will add later
                             <label>Custom Auth Config (JSON, optional)</label>
                             <textarea class="settings-textarea" @oninput="OnTemplateAuthOverrideChanged" rows="6">@(_activeTemplate.AuthOverrideJson ?? "")</textarea>
+                            *@
 
                             <label>Personality (markdown)</label>
                             <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="16">@_activeTemplate.PersonalityMarkdown</textarea>
@@ -139,6 +154,7 @@
     private enum SettingsSection { Models, Providers, Appearance }
 
     private string? _activeTemplateId;
+    private bool _showAddDropdown;
     private string _activeProviderId = "openai";
     private string _providerAuthJson = "";
     private string ProviderAuthJson
@@ -168,7 +184,7 @@
 
     private readonly List<(string Id, string Name)> _providerOptions = new()
     {
-        ("openai", "OpenAI"),
+        ("openai", "ChatGPT"),
         ("claude", "Claude"),
         ("gemini", "Gemini"),
         ("deepseek", "DeepSeek")
@@ -353,32 +369,47 @@
         Chat.Add("Models", $"Saved auth config for {_activeProviderId}.");
     }
 
-    private async Task AddTemplate()
+    private void ToggleAddDropdown()
     {
-        var providerId = "openai";
-        var llmName = _providerOptions.FirstOrDefault(p => p.Id == providerId).Name;
+        _showAddDropdown = !_showAddDropdown;
+    }
 
-        string firstName;
-        try
-        {
-            firstName = await NameGen.GenerateFirstNameAsync(providerId);
-        }
-        catch
-        {
-            firstName = HumanNames.NextFirstName();
-        }
+    private async Task AddTemplateForProvider(string providerId)
+    {
+        _showAddDropdown = false;
+        var llmName = _providerOptions.FirstOrDefault(p => p.Id == providerId).Name;
+        var firstName = HumanNames.NextFirstName();
+        var fallbackPersonality = $"# {firstName} ({llmName})\n\n- Voice: curious and concise\n- Values: clarity, honesty\n- Habits: asks follow-up questions\n- Biases: may over-generalize\n";
 
         var template = new ParticipantTemplate(
             TemplateId: ChatConversationsService.NewId(),
             ProviderId: providerId,
             DisplayName: $"{firstName} ({llmName})",
-            PersonalityMarkdown: await GenerateStarterPersonality(providerId, firstName, llmName),
+            PersonalityMarkdown: fallbackPersonality,
             AuthOverrideJson: null);
 
         ThinkTankSettings.Templates.Add(template);
         ThinkTankSettings.SaveTemplates(ThinkTankSettings.Templates);
         _activeTemplateId = template.TemplateId;
         _lastError = null;
+        StateHasChanged();
+
+        // Try to generate a richer personality in the background
+        try
+        {
+            var personality = await GenerateStarterPersonality(providerId, firstName, llmName);
+            if (personality != fallbackPersonality)
+            {
+                var idx = ThinkTankSettings.Templates.FindIndex(t => t.TemplateId == template.TemplateId);
+                if (idx >= 0)
+                {
+                    ThinkTankSettings.Templates[idx] = template with { PersonalityMarkdown = personality };
+                    ThinkTankSettings.SaveTemplates(ThinkTankSettings.Templates);
+                    StateHasChanged();
+                }
+            }
+        }
+        catch { /* fallback personality already set */ }
     }
 
     private async Task<string> GenerateStarterPersonality(string providerId, string firstName, string llmName)

@@ -56,97 +56,103 @@
                         }
                     </div>
                 </div>
-            }
-            else
-            {
-                <div class="topic-bar">
-                    <div class="topic-title">@Active.Topic</div>
-                    <button class="start-btn" @onclick="ToggleRun">Stop</button>
-                </div>
+
+                <button class="start-btn" @onclick="ToggleRun">Start</button>
             }
 
             @if (!string.IsNullOrEmpty(ActiveState.Error))
             {
                 <div class="error-msg">@ActiveState.Error</div>
             }
-
-            @if (!ActiveState.Running)
-            {
-                <button class="start-btn" @onclick="ToggleRun">Start</button>
-            }
         </div>
 
-        <div class="conversation-wrap">
-            <div class="conversation-grid">
-                <div class="member-column">
-                    <aside class="member-list" aria-label="Members">
-                        <div class="member-list-header">Members (@Active.Participants.Count)</div>
-                        <div class="member-list-items">
-                            @foreach (var p in Active.Participants)
+        @if (ActiveState.Running || ActiveState.Messages.Count > 0)
+        {
+            <div class="conversation-wrap">
+                <div class="conversation-grid">
+                    <div class="member-column">
+                        <aside class="member-list" aria-label="Members">
+                            <div class="member-list-header">Members (@Active.Participants.Count)</div>
+                            <div class="member-list-items">
+                                @foreach (var p in Active.Participants)
+                                {
+                                    <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
+                                        <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
+                                        <span class="member-name">@p.DisplayName</span>
+                                        @if (ActiveState.CurrentSpeaker == p.ParticipantId)
+                                        {
+                                            <span class="member-typing" aria-label="Speaking">
+                                                <span class="dot dot1">.</span>
+                                                <span class="dot dot2">.</span>
+                                                <span class="dot dot3">.</span>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </aside>
+                        @if (!_followConversation)
+                        {
+                            <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
+                        }
+                    </div>
+
+                    <div class="chat-column">
+                        <div class="chat-header">
+                            <div class="topic-title">@Active.Topic</div>
+                            @if (ActiveState.Running)
                             {
-                                <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
-                                    <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
-                                    <span class="member-name">@p.DisplayName</span>
-                                    @if (ActiveState.CurrentSpeaker == p.ParticipantId)
-                                    {
-                                        <span class="member-typing" aria-label="Speaking">
-                                            <span class="dot dot1">.</span>
-                                            <span class="dot dot2">.</span>
-                                            <span class="dot dot3">.</span>
-                                        </span>
-                                    }
+                                <button class="start-btn" @onclick="ToggleRun">Stop</button>
+                            }
+                            else
+                            {
+                                <button class="start-btn" @onclick="ToggleRun">Start</button>
+                            }
+                        </div>
+
+                        <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
+                            @foreach (var msg in ActiveState.Messages)
+                            {
+                                var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
+                                <div class="message-bubble @(p?.ProviderId ?? "") @(msg.IsError ? "error-bubble" : "")">
+                                    <div class="bubble-header">
+                                        <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
+                                        <span class="bubble-name">@(p?.DisplayName ?? msg.ParticipantId)</span>
+                                        <span class="bubble-round">Round @msg.Round</span>
+                                    </div>
+                                    <div class="bubble-text">@msg.Text</div>
+                                </div>
+                            }
+
+                            @if (ActiveState.Running && ActiveState.CurrentSpeaker is not null)
+                            {
+                                var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == ActiveState.CurrentSpeaker);
+                                <div class="typing-indicator @(p?.ProviderId ?? "")">
+                                    <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
+                                    <span class="bubble-name">@(p?.DisplayName ?? "")</span>
+                                    <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
                                 </div>
                             }
                         </div>
-                    </aside>
-                    @if (!_followConversation)
-                    {
-                        <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
-                    }
-                </div>
 
-                <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
-                    @foreach (var msg in ActiveState.Messages)
-                    {
-                        var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
-                        <div class="message-bubble @(p?.ProviderId ?? "") @(msg.IsError ? "error-bubble" : "")">
-                            <div class="bubble-header">
-                                <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
-                                <span class="bubble-name">@(p?.DisplayName ?? msg.ParticipantId)</span>
-                                <span class="bubble-round">Round @msg.Round</span>
+                        <div class="chat-bottom-bar">
+                            <div class="user-chat">
+                                <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
+                                       @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
+                                <button class="user-chat-send" @onclick="SendUserMessage" disabled="@(string.IsNullOrWhiteSpace(_userMessage) || ActiveState.Running == false)">Send</button>
                             </div>
-                            <div class="bubble-text">@msg.Text</div>
                         </div>
-                    }
-
-                    @if (ActiveState.Running && ActiveState.CurrentSpeaker is not null)
-                    {
-                        var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == ActiveState.CurrentSpeaker);
-                        <div class="typing-indicator @(p?.ProviderId ?? "")">
-                            <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
-                            <span class="bubble-name">@(p?.DisplayName ?? "")</span>
-                            <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
-                        </div>
-                    }
-                </div>
-
-                <div class="chat-bottom-bar">
-                    <div class="user-chat">
-                        <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
-                               @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
-                        <button class="user-chat-send" @onclick="SendUserMessage" disabled="@(string.IsNullOrWhiteSpace(_userMessage) || ActiveState.Running == false)">Send</button>
                     </div>
                 </div>
+
+                @if (!ActiveState.Running && ActiveState.Messages.Count > 0)
+                {
+                    <div class="done-bar">
+                        <span>Conversation complete — @ActiveState.Messages.Count messages exchanged.</span>
+                    </div>
+                }
             </div>
-
-            @if (!ActiveState.Running && ActiveState.Messages.Count > 0)
-            {
-                <div class="done-bar">
-                    <span>Conversation complete — @ActiveState.Messages.Count messages exchanged.</span>
-                </div>
-            }
-
-        </div>
+        }
 
         <div class="status-log">
             <div class="status-log-header">

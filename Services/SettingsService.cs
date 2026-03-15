@@ -15,6 +15,7 @@ public class LlmThinkTankSettingsService
     private const string SettingsFileName = "Settings.json";
 
     public string? AppearanceTheme { get; private set; } = "dark";
+    public int? ControlHeight { get; private set; } = 40;
 
     public LlmThinkTankSettingsService()
     {
@@ -123,8 +124,8 @@ public class LlmThinkTankSettingsService
         {
             Directory.CreateDirectory(PersonalitiesRoot);
 
-            WriteIfMissing("OpenAI.md",
-                "# OpenAI\n\nYou are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.\n");
+            WriteIfMissing("ChatGPT.md",
+                "# ChatGPT\n\nYou are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.\n");
 
             WriteIfMissing("Claude.md",
                 "# Claude\n\nYou are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.\n");
@@ -170,6 +171,7 @@ public class LlmThinkTankSettingsService
                 Conversations.AddRange(dto.Conversations);
 
             AppearanceTheme = string.IsNullOrWhiteSpace(dto.AppearanceTheme) ? "dark" : dto.AppearanceTheme;
+            ControlHeight = dto.ControlHeight ?? 40;
             return true;
         }
         catch
@@ -187,7 +189,8 @@ public class LlmThinkTankSettingsService
                 ProviderAuth = ProviderAuth.ToDictionary(k => k.Key, v => (string?)v.Value.Json),
                 Templates = Templates,
                 Conversations = Conversations,
-                AppearanceTheme = AppearanceTheme
+                AppearanceTheme = AppearanceTheme,
+                ControlHeight = ControlHeight
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(dto, new System.Text.Json.JsonSerializerOptions
@@ -213,6 +216,12 @@ public class LlmThinkTankSettingsService
     public void SetAppearanceTheme(string theme)
     {
         AppearanceTheme = string.IsNullOrWhiteSpace(theme) ? "dark" : theme;
+        Save();
+    }
+
+    public void SetControlHeight(int height)
+    {
+        ControlHeight = height;
         Save();
     }
 
@@ -274,6 +283,7 @@ public class LlmThinkTankSettingsService
         public List<ParticipantTemplate>? Templates { get; set; }
         public List<PersistedConversation>? Conversations { get; set; }
         public string? AppearanceTheme { get; set; }
+        public int? ControlHeight { get; set; }
     }
 
     public sealed record PersistedConversation(
