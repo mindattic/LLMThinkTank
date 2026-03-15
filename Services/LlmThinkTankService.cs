@@ -246,6 +246,30 @@ public class LlmThinkTankService
         return defaultModel;
     }
 
+    private int GetMaxTokens(string providerId, string? authOverrideJson, int defaultMaxTokens = 2048)
+    {
+        if (!string.IsNullOrWhiteSpace(authOverrideJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(authOverrideJson);
+                if (doc.RootElement.TryGetProperty("maxTokens", out var mt) && mt.ValueKind == JsonValueKind.Number)
+                    return mt.GetInt32();
+            }
+            catch { }
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(_settings.GetAuthJson(providerId));
+            if (doc.RootElement.TryGetProperty("maxTokens", out var mt) && mt.ValueKind == JsonValueKind.Number)
+                return mt.GetInt32();
+        }
+        catch { }
+
+        return defaultMaxTokens;
+    }
+
     // ── Shared history builder ───────────────────────────────────────────────
 
     private static List<object> BuildOpenAiMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
@@ -254,20 +278,35 @@ public class LlmThinkTankService
     private static List<object> BuildDeepSeekMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
         => BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
 
+    /// <summary>
+    /// Maximum number of recent turns to include in the context window.
+    /// Only the most recent N turns are sent to keep token usage low.
+    /// </summary>
+    private const int MaxContextTurns = 8;
+
+    private static List<SharedTurn> TrimHistory(List<SharedTurn> history)
+    {
+        if (history.Count <= MaxContextTurns)
+            return history;
+        return history.Skip(history.Count - MaxContextTurns).ToList();
+    }
+
     private static List<object> BuildOpenAiStyleMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
     {
+        var recent = TrimHistory(history);
+
         var messages = new List<object>
         {
             new { role = "system", content = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" }
         };
 
-        if (history.Count == 0)
+        if (recent.Count == 0)
         {
             messages.Add(new { role = "user", content = $"The topic is: \"{topic}\". Please give your opening thoughts." });
             return messages;
         }
 
-        foreach (var turn in history)
+        foreach (var turn in recent)
         {
             if (turn.ModelId == providerId)
                 messages.Add(new { role = "assistant", content = turn.Text });
@@ -275,7 +314,7 @@ public class LlmThinkTankService
                 messages.Add(new { role = "user", content = $"[{turn.ModelName}]: {turn.Text}" });
         }
 
-        if (history.Last().ModelId == providerId)
+        if (recent.Last().ModelId == providerId)
             messages.Add(new { role = "user", content = "Please continue the discussion." });
 
         return messages;
@@ -292,7 +331,7 @@ public class LlmThinkTankService
         var payload = new
         {
             model,
-            max_tokens = 200,
+            max_tokens = GetMaxTokens("openai", authOverrideJson),
             messages
         };
 
@@ -338,7 +377,7 @@ public class LlmThinkTankService
         var payload = new
         {
             model,
-            max_tokens = 200,
+            max_tokens = GetMaxTokens("claude", authOverrideJson),
             system,
             messages = filtered
         };
@@ -368,22 +407,23 @@ public class LlmThinkTankService
 
     private async Task<string> CallGemini(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
+        var recent = TrimHistory(history);
         var rawTurns = new List<(string role, string text)>();
 
-        if (history.Count == 0)
+        if (recent.Count == 0)
         {
             rawTurns.Add(("user", $"The topic is: \"{topic}\". Please give your opening thoughts."));
         }
         else
         {
-            foreach (var turn in history)
+            foreach (var turn in recent)
             {
                 var role = turn.ModelId == providerId ? "model" : "user";
                 var text = turn.ModelId == providerId ? turn.Text : $"[{turn.ModelName}]: {turn.Text}";
                 rawTurns.Add((role, text));
             }
 
-            if (history.Last().ModelId == providerId)
+            if (recent.Last().ModelId == providerId)
                 rawTurns.Add(("user", "Please continue the discussion."));
         }
 
@@ -409,7 +449,7 @@ public class LlmThinkTankService
         {
             system_instruction = new { parts = new[] { new { text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"\n\nRespond with a single cohesive message. Do not split your answer into separate parts." } } },
             contents,
-            generationConfig = new { maxOutputTokens = 900 }
+            generationConfig = new { maxOutputTokens = GetMaxTokens("gemini", authOverrideJson) }
         };
 
         var model = GetModel("gemini", authOverrideJson, defaultModel: "gemini-2.0-flash-lite");
@@ -463,7 +503,7 @@ public class LlmThinkTankService
         var payload = new
         {
             model,
-            max_tokens = 200,
+            max_tokens = GetMaxTokens("deepseek", authOverrideJson),
             messages
         };
 

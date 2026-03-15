@@ -14,7 +14,12 @@ public enum AppearanceMode
     Neon,
     Dracula,
     Solarized,
-    Midnight
+    Midnight,
+    Aurora,
+    Ember,
+    Ocean,
+    Forest,
+    Mono
 }
 
 public class AppearanceService

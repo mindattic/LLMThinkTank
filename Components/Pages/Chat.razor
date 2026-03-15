@@ -19,14 +19,46 @@
         @foreach (var c in Conversations.Conversations)
         {
             <button class="chat-tab @(Conversations.ActiveConversation?.ChatId == c.ChatId ? "active" : "")"
-                    @onclick="(() => Conversations.SetActive(c.ChatId))">
+                    @onclick="(() => Conversations.SetActive(c.ChatId))"
+                    @oncontextmenu="((e) => OpenTabContextMenu(e, c.ChatId))" @oncontextmenu:preventDefault>
                 <span class="chat-tab-title">@c.Title</span>
-                <span class="chat-tab-id">@c.ChatId[..Math.Min(6, c.ChatId.Length)]</span>
+                @if (_states.TryGetValue(c.ChatId, out var tabState) && tabState.Running)
+                {
+                    <span class="chat-tab-typing"><span class="dot dot1">.</span><span class="dot dot2">.</span><span class="dot dot3">.</span></span>
+                }
+                else
+                {
+                    <span class="chat-tab-id">@c.ChatId[..Math.Min(6, c.ChatId.Length)]</span>
+                }
                 <span class="chat-tab-close" title="Close" @onclick:stopPropagation @onclick="(() => CloseTab(c.ChatId))">×</span>
             </button>
         }
         <button class="chat-tab add" @onclick="NewTab">+ New</button>
     </div>
+
+    @if (_contextMenuVisible)
+    {
+        <div class="context-menu-overlay" @onclick="CloseContextMenu">
+            <div class="context-menu" style="left:@(_contextMenuX)px; top:@(_contextMenuY)px;" @onclick:stopPropagation>
+                <button class="context-menu-item" @onclick="StartRenameTab">Rename</button>
+                <button class="context-menu-item" @onclick="CloseContextMenuTab">Close</button>
+            </div>
+        </div>
+    }
+
+    @if (_renameVisible)
+    {
+        <div class="dialog-overlay" @onclick="CancelRename">
+            <div class="dialog-box" @onclick:stopPropagation>
+                <div class="dialog-title">Rename Tab</div>
+                <input class="rename-input" @bind="_renameText" @bind:event="oninput" @onkeydown="OnRenameKeyDown" />
+                <div class="dialog-actions" style="margin-top:1rem;">
+                    <button class="reset-btn" @onclick="CancelRename">Cancel</button>
+                    <button class="start-btn" @onclick="ConfirmRename">Save</button>
+                </div>
+            </div>
+        </div>
+    }
 
     @if (Active is null)
     {
@@ -40,8 +72,29 @@
         @if (!ActiveState.Running && ActiveState.Messages.Count == 0)
         {
             <div class="setup-panel">
-                <label>Discussion prompt</label>
+                <label>Discussion Topic</label>
                 <textarea value="@Active.Topic" @oninput="OnTopicInput" rows="3" placeholder="e.g. Is consciousness computational?" />
+
+                <div class="random-topic-row">
+                    <span style="flex:1"></span>
+                    <div class="random-topic-wrap">
+                        <button class="start-btn random-topic-btn" @onclick="ToggleRandomDropdown" disabled="@_generatingTopic">
+                            @(_generatingTopic ? "Generating..." : "Random")
+                        </button>
+                        @if (_showRandomDropdown)
+                        {
+                            <div class="context-menu-overlay" @onclick="(() => _showRandomDropdown = false)"></div>
+                            <div class="random-topic-dropdown">
+                                @foreach (var m in ThinkTankService.Models)
+                                {
+                                    <button class="context-menu-item" @onclick="(() => GenerateRandomTopic(m.Id))">
+                                        <span>@m.Avatar</span> @m.Name
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
 
                 <div class="participants">
                     <label>Participants</label>
@@ -49,15 +102,24 @@
                         @foreach (var t in Settings.Templates)
                         {
                             var selected = Active.Participants.Any(p => p.TemplateId == t.TemplateId);
-                            <button class="participant-pill @(selected ? "selected" : "")" @onclick="(() => ToggleParticipant(t))">
-                                <span class="pill-avatar">@GetProviderAvatar(t.ProviderId)</span>
-                                <span>@t.DisplayName</span>
-                            </button>
+                            <div class="tooltip-wrap">
+                                <button class="participant-pill @(selected ? "selected" : "")" @onclick="(() => ToggleParticipant(t))">
+                                    <span class="pill-avatar">@GetProviderAvatar(t.ProviderId)</span>
+                                    <span>@t.DisplayName</span>
+                                </button>
+                                <div class="tooltip-card">
+                                    <div class="tooltip-card-name">@t.DisplayName</div>
+                                    <div class="tooltip-card-provider" style="color: var(--@t.ProviderId);">@t.ProviderId</div>
+                                    <div class="tooltip-card-personality">@(t.PersonalityMarkdown?.Length > 200 ? t.PersonalityMarkdown[..200] + "..." : t.PersonalityMarkdown)</div>
+                                </div>
+                            </div>
                         }
                     </div>
                 </div>
 
-                <button class="start-btn" @onclick="ToggleRun">Start</button>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button class="start-btn" @onclick="ToggleRun">Start</button>
+                </div>
 
                 @if (!string.IsNullOrEmpty(ActiveState.Error))
                 {
@@ -71,8 +133,8 @@
             <div class="conversation-wrap">
                 <div class="conversation-grid">
                     <div class="member-column">
-                        <aside class="member-list" aria-label="Members">
-                            <div class="member-list-header">Members (@Active.Participants.Count)</div>
+                        <aside class="member-list" aria-label="Participants">
+                            <div class="member-list-header">Participants (@Active.Participants.Count)</div>
                             <div class="member-list-items">
                                 @foreach (var p in Active.Participants)
                                 {
@@ -110,29 +172,37 @@
                             }
                         </div>
 
-                        <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
-                            @foreach (var msg in ActiveState.Messages)
+                        <div class="messages-wrap">
+                            @if (_userChatFocused && ActiveState.Running)
                             {
-                                var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
-                                <div class="message-bubble @(p?.ProviderId ?? "") @(msg.IsError ? "error-bubble" : "")">
-                                    <div class="bubble-header">
-                                        <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
-                                        <span class="bubble-name">@(p?.DisplayName ?? msg.ParticipantId)</span>
-                                        <span class="bubble-round">Round @msg.Round</span>
+                                <div class="conversation-paused-overlay">
+                                    <span>Conversation Paused</span>
+                                </div>
+                            }
+                            <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
+                                @foreach (var msg in ActiveState.Messages)
+                                {
+                                    var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
+                                    <div class="message-bubble @(p?.ProviderId ?? "") @(msg.IsError ? "error-bubble" : "") @(msg.ParticipantId == "user" ? "user-bubble" : "")">
+                                        <div class="bubble-header">
+                                            <span class="bubble-avatar">@(msg.ParticipantId == "user" ? "👤" : GetProviderAvatar(p?.ProviderId ?? ""))</span>
+                                            <span class="bubble-name">@(msg.ParticipantId == "user" ? "You" : (p?.DisplayName ?? msg.ParticipantId))</span>
+                                            <span class="bubble-round">Round @msg.Round</span>
+                                        </div>
+                                        <div class="bubble-text">@msg.Text</div>
                                     </div>
-                                    <div class="bubble-text">@msg.Text</div>
-                                </div>
-                            }
+                                }
 
-                            @if (ActiveState.Running && ActiveState.CurrentSpeaker is not null)
-                            {
-                                var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == ActiveState.CurrentSpeaker);
-                                <div class="typing-indicator @(p?.ProviderId ?? "")">
-                                    <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
-                                    <span class="bubble-name">@(p?.DisplayName ?? "")</span>
-                                    <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
-                                </div>
-                            }
+                                @if (ActiveState.Running && ActiveState.CurrentSpeaker is not null)
+                                {
+                                    var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == ActiveState.CurrentSpeaker);
+                                    <div class="typing-indicator @(p?.ProviderId ?? "")">
+                                        <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
+                                        <span class="bubble-name">@(p?.DisplayName ?? "")</span>
+                                        <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+                                    </div>
+                                }
+                            </div>
                         </div>
 
                         <div class="chat-bottom-bar">
@@ -140,6 +210,7 @@
                                 <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
                                        @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
                                 <button class="user-chat-send" @onclick="SendUserMessage" disabled="@(string.IsNullOrWhiteSpace(_userMessage) || ActiveState.Running == false)">Send</button>
+                                <button class="user-chat-clear" @onclick="ClearUserChat" title="Clear and unpause">✕</button>
                             </div>
                         </div>
                     </div>
@@ -158,6 +229,7 @@
                 <span>Status log</span>
                 <span class="status-log-tabs">
                     <button class="status-log-tab @(_activeStatusTab == StatusTab.Perspective ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Perspective)">Perspective</button>
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Context ? "active" : "")" @onclick="(() => { _activeStatusTab = StatusTab.Context; _ = RefreshContextFiles(); })">Context</button>
                     <button class="status-log-tab @(_activeStatusTab == StatusTab.Diagnostics ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Diagnostics)">Diagnostics</button>
                 </span>
             </div>
@@ -175,6 +247,23 @@
                             <div class="status-log-item">
                                 <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
                                 <span class="status-text">@e.Text</span>
+                            </div>
+                        }
+                    }
+                }
+                else if (_activeStatusTab == StatusTab.Context)
+                {
+                    @if (_contextFiles.Count == 0)
+                    {
+                        <div class="status-log-empty">No perspective files yet. Start a conversation to generate them.</div>
+                    }
+                    else
+                    {
+                        @foreach (var kv in _contextFiles)
+                        {
+                            <div class="context-file-entry">
+                                <div class="context-file-name">@kv.Key</div>
+                                <pre class="context-file-content">@kv.Value</pre>
                             </div>
                         }
                     }
@@ -203,8 +292,9 @@
 </div>
 
 @code {
-    private enum StatusTab { Perspective, Diagnostics }
+    private enum StatusTab { Perspective, Context, Diagnostics }
     private StatusTab _activeStatusTab = StatusTab.Perspective;
+    private Dictionary<string, string> _contextFiles = new();
     private ChatConversation? Active => Conversations.ActiveConversation;
     private ConversationUiState ActiveState => GetState(Active);
 
@@ -253,11 +343,11 @@
             _lastRenderedMessageCount = count;
             if (_followConversation)
                 await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
-        }
 
-        // Keep the follow flag accurate even when content height changes (new message, window resize, etc.)
-        // without forcing scroll.
-        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
+            // Auto-refresh context tab when new messages arrive
+            if (_activeStatusTab == StatusTab.Context)
+                _ = RefreshContextFiles();
+        }
     }
 
     private void RestoreFromConversationState()
@@ -328,10 +418,9 @@
     {
         await base.OnParametersSetAsync();
 
-        // When the active conversation changes, re-evaluate follow state and optionally snap to bottom.
-        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
-        if (_followConversation)
-            await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+        // When switching tabs, snap to bottom
+        _followConversation = true;
+        await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
     }
 
     private async Task OnMessagesScrolled()
@@ -624,10 +713,37 @@
     private void OnUserChatFocus() => _userChatFocused = true;
     private void OnUserChatBlur() => _userChatFocused = false;
 
+    private async Task ClearUserChat()
+    {
+        _userMessage = "";
+        _userChatFocused = false;
+        await JS.InvokeVoidAsync("LLMThinkTank.blurActive");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshContextFiles()
+    {
+        if (Active is null) return;
+
+        var files = new Dictionary<string, string>();
+        foreach (var p in Active.Participants)
+        {
+            var content = await ChatStorage.ReadPerspectiveAsync(Active.ChatId, p.ParticipantId);
+            if (!string.IsNullOrWhiteSpace(content))
+                files[p.DisplayName] = content;
+        }
+        _contextFiles = files;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task OnUserChatKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
+        {
             await SendUserMessage();
+            _userChatFocused = false;
+            await JS.InvokeVoidAsync("LLMThinkTank.blurActive");
+        }
     }
 
     private async Task SendUserMessage()
@@ -673,6 +789,115 @@
     }
 
     private readonly List<SharedTurn> _pendingUserTurns = new();
+
+    // Random topic state
+    private bool _showRandomDropdown;
+    private bool _generatingTopic;
+
+    private void ToggleRandomDropdown() => _showRandomDropdown = !_showRandomDropdown;
+
+    private async Task GenerateRandomTopic(string providerId)
+    {
+        _showRandomDropdown = false;
+        _generatingTopic = true;
+        StateHasChanged();
+
+        try
+        {
+            var participant = Settings.Templates.FirstOrDefault(t => t.ProviderId == providerId);
+            var authJson = participant?.AuthOverrideJson;
+
+            var topic = await ThinkTankService.CallProvider(
+                providerId,
+                "You generate interesting, thought-provoking discussion topics for a group of AI systems to debate. Output ONLY the topic as a single sentence or question. No quotes, no explanation.",
+                authJson,
+                "Generate a random, interesting discussion topic. Be creative and varied - philosophy, science, ethics, technology, culture, hypotheticals are all fair game.",
+                new List<SharedTurn>());
+
+            if (Active is not null)
+            {
+                Active.Topic = topic.Trim().Trim('"', '\'');
+                Conversations.NotifyChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Active is not null)
+                Active.Topic = $"[Error generating topic: {ex.Message}]";
+        }
+        finally
+        {
+            _generatingTopic = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // Context menu state
+    private bool _contextMenuVisible;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private string? _contextMenuChatId;
+
+    // Rename state
+    private bool _renameVisible;
+    private string _renameText = "";
+    private string? _renameChatId;
+
+    private void OpenTabContextMenu(MouseEventArgs e, string chatId)
+    {
+        _contextMenuX = e.ClientX;
+        _contextMenuY = e.ClientY;
+        _contextMenuChatId = chatId;
+        _contextMenuVisible = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        _contextMenuVisible = false;
+        _contextMenuChatId = null;
+    }
+
+    private void CloseContextMenuTab()
+    {
+        if (_contextMenuChatId is not null)
+            CloseTab(_contextMenuChatId);
+        CloseContextMenu();
+    }
+
+    private void StartRenameTab()
+    {
+        _renameChatId = _contextMenuChatId;
+        var convo = Conversations.Conversations.FirstOrDefault(c => c.ChatId == _renameChatId);
+        _renameText = convo?.Title ?? "";
+        _renameVisible = true;
+        CloseContextMenu();
+    }
+
+    private void ConfirmRename()
+    {
+        if (_renameChatId is not null && !string.IsNullOrWhiteSpace(_renameText))
+        {
+            var convo = Conversations.Conversations.FirstOrDefault(c => c.ChatId == _renameChatId);
+            if (convo is not null)
+            {
+                convo.Title = _renameText.Trim();
+                Conversations.NotifyChanged();
+            }
+        }
+        CancelRename();
+    }
+
+    private void CancelRename()
+    {
+        _renameVisible = false;
+        _renameChatId = null;
+    }
+
+    private void OnRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ConfirmRename();
+        else if (e.Key == "Escape") CancelRename();
+    }
 
     private class ConversationUiMessage
     {

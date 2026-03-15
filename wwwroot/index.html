@@ -35,6 +35,9 @@
             if (!el) return;
             el.scrollTop = el.scrollHeight;
         };
+        window.LLMThinkTank.blurActive = () => {
+            if (document.activeElement) document.activeElement.blur();
+        };
     </script>
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 

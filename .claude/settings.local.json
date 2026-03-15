@@ -11,7 +11,8 @@
       "Bash(python3 -c \":*)",
       "Bash(powershell.exe -c \":*)",
       "Bash(node -e \":*)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

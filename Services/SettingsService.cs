@@ -42,10 +42,10 @@ public class LlmThinkTankSettingsService
             return;
         }
 
-        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4\"\n}");
-        ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\"\n}");
-        ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\"\n}");
-        ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\"\n}");
+        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\",\n  \"maxTokens\": 2048\n}");
 
         Templates.AddRange(CreateDefaultTemplates());
 
@@ -115,6 +115,25 @@ public class LlmThinkTankSettingsService
                     Templates[i] = Templates[i] with { IsDefault = true };
                     changed = true;
                 }
+            }
+
+            // Migrate existing provider auth configs to include maxTokens if missing
+            foreach (var providerId in new[] { "openai", "claude", "gemini", "deepseek" })
+            {
+                if (!ProviderAuth.TryGetValue(providerId, out var cfg)) continue;
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(cfg.Json);
+                    if (!doc.RootElement.TryGetProperty("maxTokens", out _))
+                    {
+                        // Inject maxTokens into existing JSON
+                        var json = cfg.Json.TrimEnd().TrimEnd('}').TrimEnd();
+                        json += ",\n  \"maxTokens\": 2048\n}";
+                        ProviderAuth[providerId] = new ProviderAuthConfig(providerId, json);
+                        changed = true;
+                    }
+                }
+                catch { }
             }
 
             if (changed)
@@ -283,14 +302,15 @@ public class LlmThinkTankSettingsService
             using var doc = System.Text.Json.JsonDocument.Parse(GetAuthJson(providerId));
             var type = doc.RootElement.TryGetProperty("type", out var t) ? t.GetString() : null;
             var model = doc.RootElement.TryGetProperty("model", out var m) ? m.GetString() : null;
-            var extra = GetAuthJson(providerId);
+            var maxTokens = doc.RootElement.TryGetProperty("maxTokens", out var mt) && mt.ValueKind == System.Text.Json.JsonValueKind.Number ? mt.GetInt32() : (int?)null;
             if (string.IsNullOrWhiteSpace(type))
                 type = providerId is "openai" or "deepseek" ? "bearer" : providerId;
 
+            var maxTokensPart = maxTokens.HasValue ? $",\n  \"maxTokens\": {maxTokens.Value}" : "";
             if (string.IsNullOrWhiteSpace(model))
-                SetAuthJson(providerId, $"{{\n  \"type\": \"{type}\",\n  \"apiKey\": \"{apiKey}\"\n}}");
+                SetAuthJson(providerId, $"{{\n  \"type\": \"{type}\",\n  \"apiKey\": \"{apiKey}\"{maxTokensPart}\n}}");
             else
-                SetAuthJson(providerId, $"{{\n  \"type\": \"{type}\",\n  \"apiKey\": \"{apiKey}\",\n  \"model\": \"{model}\"\n}}");
+                SetAuthJson(providerId, $"{{\n  \"type\": \"{type}\",\n  \"apiKey\": \"{apiKey}\",\n  \"model\": \"{model}\"{maxTokensPart}\n}}");
         }
         catch
         {

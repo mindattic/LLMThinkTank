@@ -130,14 +130,12 @@
                             <label>Personality (markdown)</label>
                             <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="16">@_activeTemplate.PersonalityMarkdown</textarea>
 
-                            <div class="settings-row" style="justify-content:flex-end;">
-                                <button class="start-btn" @onclick="GeneratePersonality" disabled="@_generating">@(_generating ? "Generating…" : "Generate")</button>
-                            </div>
-
                             <div class="settings-row">
                                 <button class="start-btn" @onclick="SaveActiveTemplate" disabled="@(_activeTemplate is null)">Save</button>
                                 <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
-                                <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(_activeTemplate?.IsDefault == true)">Remove</button>
+                                <button class="reset-btn" @onclick="RequestRemoveTemplate" disabled="@(_activeTemplate?.IsDefault == true)">Remove</button>
+                                <span style="flex:1"></span>
+                                <button class="start-btn" @onclick="GeneratePersonality" disabled="@_generating">@(_generating ? "Generating…" : "Generate")</button>
                             </div>
 
                             @if (!string.IsNullOrWhiteSpace(_lastError))
@@ -154,7 +152,10 @@
     </div>
 </div>
 
+<LLMThinkTank.Components.Shared.ConfirmationDialog @ref="_confirmDialog" />
+
 @code {
+    private LLMThinkTank.Components.Shared.ConfirmationDialog _confirmDialog = default!;
     private enum SettingsSection { Models, Providers, Appearance }
 
     private string? _activeTemplateId;
@@ -429,6 +430,16 @@
         {
             return $"# {firstName} ({llmName})\n\n- Voice: curious and concise\n- Values: clarity, honesty\n- Habits: asks follow-up questions\n- Biases: may over-generalize\n";
         }
+    }
+
+    private async Task RequestRemoveTemplate()
+    {
+        if (_activeTemplate is null) return;
+        var confirmed = await _confirmDialog.ShowAsync(
+            "Remove Personality",
+            $"Are you sure you want to remove \"{_activeTemplate.DisplayName}\"? This cannot be undone.",
+            "Remove");
+        if (confirmed) RemoveTemplate();
     }
 
     private void RemoveTemplate()
