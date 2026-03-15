@@ -434,6 +434,7 @@
         await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = Active.Topic, ts = DateTimeOffset.UtcNow });
 
         var round = 0;
+        var titleGenerated = false;
         while (!state.StopRequested)
         {
             while (_userChatFocused && !state.StopRequested)
@@ -520,11 +521,83 @@
                 StateHasChanged();
                 await Task.Delay(400);
             }
+
+            // After the first round, generate a chat title in the background
+            if (round == 1 && !titleGenerated)
+            {
+                titleGenerated = true;
+                _ = GenerateChatTitleAsync(Active, state);
+            }
         }
 
         state.Running = false;
         state.CurrentSpeaker = null;
         StateHasChanged();
+    }
+
+    private async Task GenerateChatTitleAsync(ChatConversation convo, ConversationUiState state)
+    {
+        try
+        {
+            var topic = convo.Topic ?? "";
+            var suggestions = new List<string>();
+
+            // Ask each participant to suggest a short title
+            foreach (var p in convo.Participants)
+            {
+                try
+                {
+                    var suggestion = await ThinkTankService.CallProvider(
+                        p.ProviderId,
+                        "You suggest concise chat titles. Output ONLY the title, no quotes, no punctuation, no explanation. Max 5 words.",
+                        p.AuthOverrideJson,
+                        $"Suggest a short, catchy title for a group discussion about: {topic}",
+                        new List<SharedTurn>());
+
+                    var cleaned = suggestion.Trim().Trim('"', '\'', '.').Trim();
+                    if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length <= 50)
+                        suggestions.Add(cleaned);
+                }
+                catch { /* skip this participant */ }
+            }
+
+            if (suggestions.Count == 0)
+                return;
+
+            // Have one participant pick the best title
+            string bestTitle;
+            if (suggestions.Count == 1)
+            {
+                bestTitle = suggestions[0];
+            }
+            else
+            {
+                var picker = convo.Participants.First();
+                var numbered = string.Join("\n", suggestions.Select((s, i) => $"{i + 1}. {s}"));
+                try
+                {
+                    var choice = await ThinkTankService.CallProvider(
+                        picker.ProviderId,
+                        "You pick the best chat title from a list. Output ONLY the chosen title text, nothing else.",
+                        picker.AuthOverrideJson,
+                        $"Pick the best title for a discussion about \"{topic}\" from these suggestions:\n{numbered}",
+                        new List<SharedTurn>());
+
+                    bestTitle = choice.Trim().Trim('"', '\'', '.').Trim();
+                    if (string.IsNullOrWhiteSpace(bestTitle) || bestTitle.Length > 50)
+                        bestTitle = suggestions[0];
+                }
+                catch
+                {
+                    bestTitle = suggestions[0];
+                }
+            }
+
+            convo.Title = bestTitle;
+            Conversations.NotifyChanged();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* title generation is best-effort */ }
     }
 
     private async Task ToggleRun()
