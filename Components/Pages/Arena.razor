@@ -78,26 +78,32 @@
 
         <div class="conversation-wrap">
             <div class="conversation-grid">
-                <aside class="member-list" aria-label="Members">
-                    <div class="member-list-header">Members (@Active.Participants.Count)</div>
-                    <div class="member-list-items">
-                        @foreach (var p in Active.Participants)
-                        {
-                            <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
-                                <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
-                                <span class="member-name">@p.DisplayName</span>
-                                @if (ActiveState.CurrentSpeaker == p.ParticipantId)
-                                {
-                                    <span class="member-typing" aria-label="Speaking">
-                                        <span class="dot dot1">.</span>
-                                        <span class="dot dot2">.</span>
-                                        <span class="dot dot3">.</span>
-                                    </span>
-                                }
-                            </div>
-                        }
-                    </div>
-                </aside>
+                <div class="member-column">
+                    <aside class="member-list" aria-label="Members">
+                        <div class="member-list-header">Members (@Active.Participants.Count)</div>
+                        <div class="member-list-items">
+                            @foreach (var p in Active.Participants)
+                            {
+                                <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
+                                    <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
+                                    <span class="member-name">@p.DisplayName</span>
+                                    @if (ActiveState.CurrentSpeaker == p.ParticipantId)
+                                    {
+                                        <span class="member-typing" aria-label="Speaking">
+                                            <span class="dot dot1">.</span>
+                                            <span class="dot dot2">.</span>
+                                            <span class="dot dot3">.</span>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </aside>
+                    @if (!_followConversation)
+                    {
+                        <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
+                    }
+                </div>
 
                 <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
                     @foreach (var msg in ActiveState.Messages)
@@ -125,11 +131,6 @@
                 </div>
 
                 <div class="chat-bottom-bar">
-                    @if (!_followConversation)
-                    {
-                        <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
-                    }
-
                     <div class="user-chat">
                         <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
                                @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
