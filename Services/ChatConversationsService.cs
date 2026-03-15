@@ -7,7 +7,8 @@ public record ParticipantTemplate(
     string ProviderId,
     string DisplayName,
     string PersonalityMarkdown,
-    string? AuthOverrideJson);
+    string? AuthOverrideJson,
+    bool IsDefault = false);
 
 public record ChatParticipant(
     string ParticipantId,

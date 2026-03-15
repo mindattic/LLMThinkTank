@@ -47,75 +47,64 @@ public class LlmThinkTankSettingsService
         ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"version\": \"2023-06-01\",\n  \"model\": \"claude-sonnet-4\"\n}");
         ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\"\n}");
 
-        Templates.Add(new ParticipantTemplate(
-            TemplateId: ChatConversationsService.NewId(),
-            ProviderId: "openai",
-            DisplayName: "ChatGPT",
-            PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
-            AuthOverrideJson: null));
-
-        Templates.Add(new ParticipantTemplate(
-            TemplateId: ChatConversationsService.NewId(),
-            ProviderId: "claude",
-            DisplayName: "Claude",
-            PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
-            AuthOverrideJson: null));
-
-        Templates.Add(new ParticipantTemplate(
-            TemplateId: ChatConversationsService.NewId(),
-            ProviderId: "gemini",
-            DisplayName: "Gemini",
-            PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
-            AuthOverrideJson: null));
-
-        Templates.Add(new ParticipantTemplate(
-            TemplateId: ChatConversationsService.NewId(),
-            ProviderId: "deepseek",
-            DisplayName: "DeepSeek",
-            PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
-            AuthOverrideJson: null));
+        Templates.AddRange(CreateDefaultTemplates());
 
         AppearanceTheme = "dark";
         EnsurePersonalityFiles();
         Save();
     }
 
+    private static List<ParticipantTemplate> CreateDefaultTemplates() => new()
+    {
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "openai",
+            DisplayName: "ChatGPT",
+            PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "claude",
+            DisplayName: "Claude",
+            PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "gemini",
+            DisplayName: "Gemini",
+            PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "deepseek",
+            DisplayName: "DeepSeek",
+            PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true)
+    };
+
     private void EnsureDefaultsIfMissing()
     {
         try
         {
-            if (Templates.Count > 0)
-                return;
+            var defaults = CreateDefaultTemplates();
+            var changed = false;
 
-            Templates.Add(new ParticipantTemplate(
-                TemplateId: ChatConversationsService.NewId(),
-                ProviderId: "openai",
-                DisplayName: "ChatGPT",
-                PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
-                AuthOverrideJson: null));
+            foreach (var d in defaults)
+            {
+                // Check if a default template for this provider already exists
+                if (!Templates.Any(t => t.IsDefault && t.ProviderId == d.ProviderId))
+                {
+                    Templates.Insert(0, d);
+                    changed = true;
+                }
+            }
 
-            Templates.Add(new ParticipantTemplate(
-                TemplateId: ChatConversationsService.NewId(),
-                ProviderId: "claude",
-                DisplayName: "Claude",
-                PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
-                AuthOverrideJson: null));
-
-            Templates.Add(new ParticipantTemplate(
-                TemplateId: ChatConversationsService.NewId(),
-                ProviderId: "gemini",
-                DisplayName: "Gemini",
-                PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
-                AuthOverrideJson: null));
-
-            Templates.Add(new ParticipantTemplate(
-                TemplateId: ChatConversationsService.NewId(),
-                ProviderId: "deepseek",
-                DisplayName: "DeepSeek",
-                PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
-                AuthOverrideJson: null));
-
-            Save();
+            if (changed)
+                Save();
         }
         catch { }
     }

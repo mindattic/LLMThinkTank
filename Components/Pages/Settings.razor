@@ -99,6 +99,10 @@
                                 <button class="settings-tab template-row @(t.TemplateId == _activeTemplateId ? "active" : "")" @onclick="(() => SelectTemplate(t.TemplateId))">
                                     <span class="settings-tab-avatar">@GetProviderAvatar(t.ProviderId)</span>
                                     <span class="template-name">@t.DisplayName</span>
+                                    @if (t.IsDefault)
+                                    {
+                                        <span class="template-default-badge">default</span>
+                                    }
                                 </button>
                             }
                         </div>
@@ -133,7 +137,7 @@
                             <div class="settings-row">
                                 <button class="start-btn" @onclick="SaveActiveTemplate" disabled="@(_activeTemplate is null)">Save</button>
                                 <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
-                                <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(ThinkTankSettings.Templates.Count <= 1)">Remove</button>
+                                <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(_activeTemplate?.IsDefault == true)">Remove</button>
                             </div>
 
                             @if (!string.IsNullOrWhiteSpace(_lastError))
