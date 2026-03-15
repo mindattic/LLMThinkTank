@@ -12,12 +12,12 @@
       <RelatedAsset></RelatedAsset>
       <AssetTraitName></AssetTraitName>
       <AssetTraitValue></AssetTraitValue>
-      <Fingerprint>9r0irfzn42</Fingerprint>
-      <Integrity>VVsTohCqdG0PpY86S2BB89mq92U8vFCUGSxBxKp0KFI=</Integrity>
+      <Fingerprint>z3qg31qacy</Fingerprint>
+      <Integrity>0XCyD8Emu6fib+NJBTrlodxlSPpcXqC1wSoS0Azxbbg=</Integrity>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <FileLength>34785</FileLength>
-      <LastWriteTime>Sat, 14 Mar 2026 19:51:28 GMT</LastWriteTime>
+      <FileLength>40499</FileLength>
+      <LastWriteTime>Sun, 15 Mar 2026 16:29:33 GMT</LastWriteTime>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\app.css'))</OriginalItemSpec>
     </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\index.html'))">
@@ -92,12 +92,12 @@
       <RelatedAsset></RelatedAsset>
       <AssetTraitName>ScopedCss</AssetTraitName>
       <AssetTraitValue>ApplicationBundle</AssetTraitValue>
-      <Fingerprint>ccg4o4st3f</Fingerprint>
-      <Integrity>RCwJ0LwJ7vzjDqIAn6a1FFnfYDE1WnJshRay/GjxQpw=</Integrity>
+      <Fingerprint>wpebzmaw0b</Fingerprint>
+      <Integrity>vCXSCFat+1vC2rlHECzjWKgqoiLuhPyinZ8G+ZABDWc=</Integrity>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      <FileLength>1391</FileLength>
-      <LastWriteTime>Sat, 14 Mar 2026 19:04:03 GMT</LastWriteTime>
+      <FileLength>1510</FileLength>
+      <LastWriteTime>Sun, 15 Mar 2026 16:33:49 GMT</LastWriteTime>
       <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\LLMThinkTank.styles.css'))</OriginalItemSpec>
     </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\theme.js'))">

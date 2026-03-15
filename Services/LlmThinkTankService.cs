@@ -246,9 +246,15 @@ public class LlmThinkTankService
         return defaultModel;
     }
 
-    // ── Shared history builder (OpenAI / DeepSeek style) ─────────────────────
+    // ── Shared history builder ───────────────────────────────────────────────
 
     private static List<object> BuildOpenAiMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
+        => BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
+
+    private static List<object> BuildDeepSeekMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
+        => BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
+
+    private static List<object> BuildOpenAiStyleMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
     {
         var messages = new List<object>
         {
@@ -279,7 +285,7 @@ public class LlmThinkTankService
 
     private async Task<string> CallOpenAI(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
-        var messages = BuildOpenAiMessages(providerId, personalityMarkdown, topic, history);
+        var messages = BuildDeepSeekMessages(providerId, personalityMarkdown, topic, history);
 
         var model = GetModel("openai", authOverrideJson, defaultModel: "gpt-4o");
 

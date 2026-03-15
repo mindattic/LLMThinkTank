@@ -1,4 +1,5 @@
 @page "/thinktank"
+@using Microsoft.AspNetCore.Components.Web
 @inject LlmThinkTankService ThinkTankService
 @inject SettingsService Settings
 @inject ChatConversationsService Conversations
@@ -37,48 +38,45 @@
     else
     {
         <div class="setup-panel">
-            <label>Discussion prompt</label>
-            <textarea value="@Active.Topic" @oninput="OnTopicInput" rows="3" placeholder="e.g. Is consciousness computational?" />
+            @if (!ActiveState.Running)
+            {
+                <label>Discussion prompt</label>
+                <textarea value="@Active.Topic" @oninput="OnTopicInput" rows="3" placeholder="e.g. Is consciousness computational?" />
 
-            <div class="participants">
-                <label>Participants</label>
-                <div class="participant-grid">
-                    @foreach (var t in Settings.Templates)
-                    {
-                        var selected = Active.Participants.Any(p => p.TemplateId == t.TemplateId);
-                        <button class="participant-pill @(selected ? "selected" : "")" @onclick="(() => ToggleParticipant(t))">
-                            <span class="pill-avatar">@GetProviderAvatar(t.ProviderId)</span>
-                            <span>@t.DisplayName</span>
-                        </button>
-                    }
+                <div class="participants">
+                    <label>Participants</label>
+                    <div class="participant-grid">
+                        @foreach (var t in Settings.Templates)
+                        {
+                            var selected = Active.Participants.Any(p => p.TemplateId == t.TemplateId);
+                            <button class="participant-pill @(selected ? "selected" : "")" @onclick="(() => ToggleParticipant(t))">
+                                <span class="pill-avatar">@GetProviderAvatar(t.ProviderId)</span>
+                                <span>@t.DisplayName</span>
+                            </button>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="topic-bar">
+                    <div class="topic-title">@Active.Topic</div>
+                    <button class="start-btn" @onclick="ToggleRun">Stop</button>
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(ActiveState.Error))
             {
                 <div class="error-msg">@ActiveState.Error</div>
             }
 
-            <button class="start-btn" @onclick="ToggleRun">
-                @(ActiveState.Running ? "Stop" : "Start")
-            </button>
+            @if (!ActiveState.Running)
+            {
+                <button class="start-btn" @onclick="ToggleRun">Start</button>
+            }
         </div>
 
         <div class="conversation-wrap">
-            <div class="scoreboard">
-                @foreach (var p in Active.Participants)
-                {
-                    <div class="score-card @p.ProviderId @(ActiveState.CurrentSpeaker == p.ParticipantId ? "speaking" : "")">
-                        <span class="score-avatar">@GetProviderAvatar(p.ProviderId)</span>
-                        <span class="score-name">@p.DisplayName</span>
-                        @if (ActiveState.CurrentSpeaker == p.ParticipantId)
-                        {
-                            <span class="thinking-dot">●</span>
-                        }
-                    </div>
-                }
-            </div>
-
             <div class="conversation-grid">
                 <aside class="member-list" aria-label="Members">
                     <div class="member-list-header">Members (@Active.Participants.Count)</div>
@@ -88,6 +86,14 @@
                             <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
                                 <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
                                 <span class="member-name">@p.DisplayName</span>
+                                @if (ActiveState.CurrentSpeaker == p.ParticipantId)
+                                {
+                                    <span class="member-typing" aria-label="Speaking">
+                                        <span class="dot dot1">.</span>
+                                        <span class="dot dot2">.</span>
+                                        <span class="dot dot3">.</span>
+                                    </span>
+                                }
                             </div>
                         }
                     </div>
@@ -116,6 +122,19 @@
                             <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
                         </div>
                     }
+                </div>
+
+                <div class="chat-bottom-bar">
+                    @if (!_followConversation)
+                    {
+                        <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
+                    }
+
+                    <div class="user-chat">
+                        <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
+                               @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
+                        <button class="user-chat-send" @onclick="SendUserMessage" disabled="@(string.IsNullOrWhiteSpace(_userMessage) || ActiveState.Running == false)">Send</button>
+                    </div>
                 </div>
             </div>
 
@@ -187,6 +206,8 @@
     private ElementReference _messagesDiv;
     private bool _followConversation = true;
     private int _lastRenderedMessageCount;
+    private string _userMessage = "";
+    private bool _userChatFocused;
 
     protected override void OnInitialized()
     {
@@ -311,6 +332,13 @@
         _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
     }
 
+    private async Task JumpToBottom()
+    {
+        _followConversation = true;
+        await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+        await InvokeAsync(StateHasChanged);
+    }
+
     private ConversationUiState GetState(ChatConversation? c)
     {
         if (c is null)
@@ -358,7 +386,6 @@
             ProviderId: t.ProviderId,
             DisplayName: t.DisplayName,
             PersonalityMarkdown: t.PersonalityMarkdown,
-            CustomInstructions: t.CustomInstructions,
             AuthOverrideJson: t.AuthOverrideJson));
     }
 
@@ -392,17 +419,28 @@
         state.TotalTurns = 0;
 
         var sharedHistory = new List<SharedTurn>();
+        if (_pendingUserTurns.Count > 0)
+        {
+            sharedHistory.AddRange(_pendingUserTurns);
+            _pendingUserTurns.Clear();
+        }
         Conversations.NotifyChanged();
         await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = Active.Topic, ts = DateTimeOffset.UtcNow });
 
         var round = 0;
         while (!state.StopRequested)
         {
+            while (_userChatFocused && !state.StopRequested)
+                await Task.Delay(50);
+
             round++;
             foreach (var p in Active.Participants)
             {
                 if (state.StopRequested)
                     break;
+
+                while (_userChatFocused && !state.StopRequested)
+                    await Task.Delay(50);
 
                 state.CurrentSpeaker = p.ParticipantId;
                 StateHasChanged();
@@ -410,11 +448,13 @@
 
                 try
                 {
-                    var personality = string.IsNullOrWhiteSpace(p.CustomInstructions)
-                        ? p.PersonalityMarkdown
-                        : $"{p.PersonalityMarkdown}\n\n# Custom instructions\n\n{p.CustomInstructions}";
+                    if (_pendingUserTurns.Count > 0)
+                    {
+                        sharedHistory.AddRange(_pendingUserTurns);
+                        _pendingUserTurns.Clear();
+                    }
 
-                    var response = await ThinkTankService.CallProvider(p.ProviderId, personality, p.AuthOverrideJson, Active.Topic!, sharedHistory);
+                    var response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, Active.Topic!, sharedHistory);
 
                     sharedHistory.Add(new SharedTurn
                     {
@@ -500,6 +540,59 @@
         Conversations.Changed -= OnConversationsChanged;
         ThinkTankService.Diagnostics -= OnDiagnostics;
     }
+
+    private void OnUserChatFocus() => _userChatFocused = true;
+    private void OnUserChatBlur() => _userChatFocused = false;
+
+    private async Task OnUserChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SendUserMessage();
+    }
+
+    private async Task SendUserMessage()
+    {
+        if (Active is null)
+            return;
+
+        var text = (_userMessage ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var round = ActiveState.Messages.Count == 0 ? 1 : ActiveState.Messages.Max(m => m.Round);
+
+        var msg = new ConversationUiMessage
+        {
+            ParticipantId = "user",
+            Text = text,
+            Round = round,
+            IsError = false
+        };
+
+        ActiveState.Messages.Add(msg);
+        Active.Messages.Add(new SettingsService.PersistedMessage(msg.ParticipantId, msg.Text, msg.Round, msg.IsError));
+
+        // Append to the storage log so it can be fully recreated.
+        await ChatStorage.AppendChatJsonAsync(Active.ChatId, new
+        {
+            type = "user",
+            chatId = Active.ChatId,
+            round,
+            text,
+            ts = DateTimeOffset.UtcNow
+        });
+
+        // Also push into the next-turn context for all models.
+        // We represent user turns as a pseudo-participant in shared history.
+        // (The run loop rebuilds shared history only in-memory; this keeps it coherent during the session.)
+        _pendingUserTurns.Add(new SharedTurn { ModelId = "user", ModelName = "User", Text = text, Round = round });
+
+        _userMessage = "";
+        Conversations.NotifyChanged();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private readonly List<SharedTurn> _pendingUserTurns = new();
 
     private class ConversationUiMessage
     {

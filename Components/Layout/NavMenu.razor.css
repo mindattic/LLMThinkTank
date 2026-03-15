@@ -3,10 +3,10 @@
     display: flex;
     align-items: center;
     height: 3.25rem;
-    margin: 10px 0;
+    margin: 14px 0 10px;
     padding: 0 1.25rem;
     background: var(--surface, #12121a);
-    border-bottom: 1px solid var(--border, #2a2a3a);
+    border-bottom: none;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -26,13 +26,21 @@
     align-items: stretch;
     height: 100%;
     gap: 0.1rem;
+    border-bottom: none !important;
+    box-shadow: none !important;
+}
+
+.nav-tabs::after {
+    content: none !important;
 }
 
 .nav-tab {
     height: auto;
-    margin: 0.45rem 0;
+    margin: 10px 0;
     text-decoration: none;
     line-height: normal;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 
 .nav-tab:hover {
@@ -52,4 +60,6 @@
 .nav-tab.active {
     border-color: var(--gemini, #4285f4);
     background: color-mix(in srgb, var(--gemini, #4285f4) 18%, transparent);
+    border-bottom: none !important;
+    box-shadow: none !important;
 }

@@ -35,83 +35,98 @@
             }
             else if (_activeSection == SettingsSection.Models)
             {
-                <div class="settings-tabs settings-tabs-inner">
-                    @foreach (var p in _providerOptions)
-                    {
-                        <button class="settings-tab @(p.Id == _activeProviderId ? "active" : "")" @onclick="(() => SelectProvider(p.Id))">
-                            <span class="settings-tab-avatar">
-                                @GetProviderAvatar(p.Id)
-                                <span class="provider-dot @GetProviderDotClass(p.Id)" title="@GetProviderDotTitle(p.Id)"></span>
-                            </span>
-                            <span>@p.Name</span>
-                        </button>
-                    }
-                </div>
-
-                <div class="settings-form">
-                    <label>Auth config (JSON)</label>
-                    <textarea class="settings-textarea" @bind="ProviderAuthJson" @bind:event="oninput" rows="12" placeholder="Enter your API key here..."></textarea>
-
-                    <label>Known models</label>
-                    <div class="model-chip-row">
-                        @foreach (var m in GetKnownModels(_activeProviderId))
-                        {
-                            <button type="button" class="model-chip" @onclick="(() => SetProviderModel(m))">@m</button>
-                        }
+                <div class="templates-split">
+                    <div class="templates-left">
+                        <div class="templates-left-header">
+                            <span>Providers</span>
+                        </div>
+                        <div class="templates-left-list">
+                            @foreach (var p in _providerOptions)
+                            {
+                                <button class="settings-tab template-row @(p.Id == _activeProviderId ? "active" : "")" @onclick="(() => SelectProvider(p.Id))">
+                                    <span class="settings-tab-avatar">
+                                        @GetProviderAvatar(p.Id)
+                                        <span class="provider-dot @GetProviderDotClass(p.Id)" title="@GetProviderDotTitle(p.Id)"></span>
+                                    </span>
+                                    <span class="template-name">@p.Name</span>
+                                </button>
+                            }
+                        </div>
                     </div>
 
-                    <div class="settings-row">
-                        <button class="start-btn" @onclick="SaveProviderAuth">Save</button>
+                    <div class="templates-right settings-form">
+                        <label>Auth config (JSON)</label>
+                        <textarea class="settings-textarea" @bind="ProviderAuthJson" @bind:event="oninput" rows="12" placeholder="Enter your API key here..."></textarea>
+
+                        <label>Known models</label>
+                        <div class="model-chip-row">
+                            @foreach (var m in GetKnownModels(_activeProviderId))
+                            {
+                                <button type="button" class="model-chip" @onclick="(() => SetProviderModel(m))">@m</button>
+                            }
+                        </div>
+
+                        <div class="settings-row">
+                            <button class="start-btn" @onclick="SaveProviderAuth">Save</button>
+                        </div>
                     </div>
                 </div>
             }
             else
             {
-                <div class="settings-tabs settings-tabs-inner">
-                    @foreach (var t in ThinkTankSettings.Templates)
-                    {
-                        <button class="settings-tab @(t.TemplateId == _activeTemplateId ? "active" : "")" @onclick="(() => SelectTemplate(t.TemplateId))">
-                            <span class="settings-tab-avatar">@GetProviderAvatar(t.ProviderId)</span>
-                            <span>@t.DisplayName</span>
-                        </button>
-                    }
-
-                    <button class="settings-tab" @onclick="AddTemplate">+ Add</button>
-                </div>
-
-                <div class="settings-form">
-                    @if (_activeTemplate is not null)
-                    {
-                        <label>Display name</label>
-                        <input value="@_activeTemplate.DisplayName" @oninput="OnTemplateNameChanged" placeholder="e.g. Bob Claude" />
-
-                        <label>Provider</label>
-                        <select value="@_activeTemplate.ProviderId" @onchange="OnTemplateProviderChanged">
-                            @foreach (var p in _providerOptions)
-                            {
-                                <option value="@p.Id">@p.Name</option>
-                            }
-                        </select>
-
-                        <label>Custom Auth Config (JSON, optional)</label>
-                        <textarea class="settings-textarea" @oninput="OnTemplateAuthOverrideChanged" rows="6">@(_activeTemplate.AuthOverrideJson ?? "")</textarea>
-
-                        <label>Personality (markdown)</label>
-                        <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="10">@_activeTemplate.PersonalityMarkdown</textarea>
-
-                        <label>Custom instructions (biases / rules)</label>
-                        <textarea class="settings-textarea" @oninput="OnTemplateCustomInstructionsChanged" rows="6">@(_activeTemplate.CustomInstructions ?? "")</textarea>
-
-                        <div class="settings-row">
-                            <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
-                            <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(ThinkTankSettings.Templates.Count <= 1)">Remove</button>
+                <div class="templates-split">
+                    <div class="templates-left">
+                        <div class="templates-left-header">
+                            <span>Personalities</span>
+                            <button class="settings-tab" @onclick="AddTemplate">+ Add</button>
                         </div>
+                        <div class="templates-left-list">
+                            @foreach (var t in ThinkTankSettings.Templates)
+                            {
+                                <button class="settings-tab template-row @(t.TemplateId == _activeTemplateId ? "active" : "")" @onclick="(() => SelectTemplate(t.TemplateId))">
+                                    <span class="settings-tab-avatar">@GetProviderAvatar(t.ProviderId)</span>
+                                    <span class="template-name">@t.DisplayName</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
 
-                        @if (!string.IsNullOrWhiteSpace(_lastError))
+                    <div class="templates-right settings-form">
+                        @if (_activeTemplate is not null)
                         {
-                            <div class="error-msg">@_lastError</div>
+                            <label>Display name</label>
+                            <input value="@_activeTemplate.DisplayName" @oninput="OnTemplateNameChanged" placeholder="e.g. Bob Claude" />
+
+                            <label>Provider</label>
+                            <select value="@_activeTemplate.ProviderId" @onchange="OnTemplateProviderChanged">
+                                @foreach (var p in _providerOptions)
+                                {
+                                    <option value="@p.Id">@p.Name</option>
+                                }
+                            </select>
+
+                            <label>Custom Auth Config (JSON, optional)</label>
+                            <textarea class="settings-textarea" @oninput="OnTemplateAuthOverrideChanged" rows="6">@(_activeTemplate.AuthOverrideJson ?? "")</textarea>
+
+                            <label>Personality (markdown)</label>
+                            <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="16">@_activeTemplate.PersonalityMarkdown</textarea>
+
+                            <div class="settings-row" style="justify-content:flex-end;">
+                                <button class="start-btn" @onclick="GeneratePersonality" disabled="@_generating">@(_generating ? "Generating…" : "Generate")</button>
+                            </div>
+
+                            <div class="settings-row">
+                                <button class="start-btn" @onclick="SaveActiveTemplate" disabled="@(_activeTemplate is null)">Save</button>
+                                <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
+                                <button class="reset-btn" @onclick="RemoveTemplate" disabled="@(ThinkTankSettings.Templates.Count <= 1)">Remove</button>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(_lastError))
+                            {
+                                <div class="error-msg">@_lastError</div>
+                            }
                         }
-                    }
+                    </div>
                 </div>
             }
         </div>
@@ -139,6 +154,8 @@
     private SettingsSection _activeSection = SettingsSection.Providers;
     private bool _testing;
     private string? _lastError;
+    private bool _generating;
+    private CancellationTokenSource? _templatePersistDebounceCts;
 
     private readonly Dictionary<string, ProviderStatus> _providerStatus = new();
     private CancellationTokenSource? _authDebounceCts;
@@ -159,7 +176,7 @@
 
     private static readonly Dictionary<string, string[]> KnownModels = new()
     {
-        ["openai"] = ["gpt-5", "gpt-5-mini", "gpt-5-nano"],
+        ["openai"] = ["gpt-4", "gpt-5", "gpt-5-mini", "gpt-5-nano"],
         ["claude"] = ["claude-sonnet-4", "claude-sonnet-4-6"],
         ["gemini"] = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite"],
         ["deepseek"] = ["deepseek-chat", "deepseek-reasoner"]
@@ -241,6 +258,7 @@
 
     private void SelectTemplate(string templateId)
     {
+        SaveActiveTemplate();
         _activeTemplateId = templateId;
         _lastError = null;
     }
@@ -272,6 +290,7 @@
 
     private void SelectProvider(string providerId)
     {
+        SaveActiveTemplate();
         _activeProviderId = providerId;
         _providerAuthJson = ThinkTankSettings.GetAuthJson(providerId);
         _lastError = null;
@@ -354,7 +373,6 @@
             ProviderId: providerId,
             DisplayName: $"{firstName} ({llmName})",
             PersonalityMarkdown: await GenerateStarterPersonality(providerId, firstName, llmName),
-            CustomInstructions: null,
             AuthOverrideJson: null);
 
         ThinkTankSettings.Templates.Add(template);
@@ -408,7 +426,69 @@
             return;
 
         ThinkTankSettings.Templates[idx] = update(ThinkTankSettings.Templates[idx]);
+        DebouncePersistTemplates();
+    }
+
+    private void DebouncePersistTemplates()
+    {
+        _templatePersistDebounceCts?.Cancel();
+        _templatePersistDebounceCts?.Dispose();
+        _templatePersistDebounceCts = new CancellationTokenSource();
+
+        var token = _templatePersistDebounceCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(650), token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                await InvokeAsync(() => ThinkTankSettings.SaveTemplates(ThinkTankSettings.Templates));
+            }
+            catch (OperationCanceledException) { }
+        }, token);
+    }
+
+    private void SaveActiveTemplate()
+    {
+        if (_activeTemplate is null)
+            return;
+
         ThinkTankSettings.SaveTemplates(ThinkTankSettings.Templates);
+    }
+
+    private async Task GeneratePersonality()
+    {
+        _lastError = null;
+        if (_activeTemplate is null)
+            return;
+
+        _generating = true;
+        try
+        {
+            var prompt = $"Create a detailed markdown personality profile for a chat participant named {_activeTemplate.DisplayName}. " +
+                         "Include: voice/style, beliefs, thoughts, biases, rules, and failure modes to avoid. " +
+                         "Keep it under 250 words. Output markdown only.";
+
+            var md = await ThinkTank.CallProvider(
+                _activeTemplate.ProviderId,
+                personalityMarkdown: "You generate personality profiles for simulated participants.",
+                authOverrideJson: _activeTemplate.AuthOverrideJson,
+                topic: prompt,
+                history: new List<SharedTurn>());
+
+            UpdateActiveTemplate(t => t with { PersonalityMarkdown = md });
+            SaveActiveTemplate();
+        }
+        catch (Exception ex)
+        {
+            _lastError = ex.Message;
+        }
+        finally
+        {
+            _generating = false;
+        }
     }
 
     private void OnTemplateNameChanged(ChangeEventArgs e)
@@ -439,11 +519,6 @@
         UpdateActiveTemplate(t => t with { AuthOverrideJson = string.IsNullOrWhiteSpace(v) ? null : v });
     }
 
-    private void OnTemplateCustomInstructionsChanged(ChangeEventArgs e)
-    {
-        var v = e.Value?.ToString();
-        UpdateActiveTemplate(t => t with { CustomInstructions = string.IsNullOrWhiteSpace(v) ? null : v });
-    }
 
     private async Task TestTemplate()
     {
@@ -504,6 +579,8 @@
         _authDebounceCts?.Dispose();
         _persistDebounceCts?.Cancel();
         _persistDebounceCts?.Dispose();
+        _templatePersistDebounceCts?.Cancel();
+        _templatePersistDebounceCts?.Dispose();
         _providerPollTimer?.Dispose();
     }
 

@@ -39,7 +39,7 @@ public class LlmThinkTankSettingsService
             return;
         }
 
-        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-5\"\n}");
+        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4\"\n}");
         ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\"\n}");
         ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"version\": \"2023-06-01\",\n  \"model\": \"claude-sonnet-4\"\n}");
         ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\"\n}");
@@ -49,7 +49,6 @@ public class LlmThinkTankSettingsService
             ProviderId: "openai",
             DisplayName: "ChatGPT",
             PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
-            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -57,7 +56,6 @@ public class LlmThinkTankSettingsService
             ProviderId: "claude",
             DisplayName: "Claude",
             PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
-            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -65,7 +63,6 @@ public class LlmThinkTankSettingsService
             ProviderId: "gemini",
             DisplayName: "Gemini",
             PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
-            CustomInstructions: null,
             AuthOverrideJson: null));
 
         Templates.Add(new ParticipantTemplate(
@@ -73,7 +70,6 @@ public class LlmThinkTankSettingsService
             ProviderId: "deepseek",
             DisplayName: "DeepSeek",
             PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
-            CustomInstructions: null,
             AuthOverrideJson: null));
 
         AppearanceTheme = "dark";
@@ -93,7 +89,6 @@ public class LlmThinkTankSettingsService
                 ProviderId: "openai",
                 DisplayName: "ChatGPT",
                 PersonalityMarkdown: "You are ChatGPT, made by OpenAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be conversational and curious. 2-3 sentences max.",
-                CustomInstructions: null,
                 AuthOverrideJson: null));
 
             Templates.Add(new ParticipantTemplate(
@@ -101,7 +96,6 @@ public class LlmThinkTankSettingsService
                 ProviderId: "claude",
                 DisplayName: "Claude",
                 PersonalityMarkdown: "You are Claude, made by Anthropic. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be thoughtful and honest. 2-3 sentences max.",
-                CustomInstructions: null,
                 AuthOverrideJson: null));
 
             Templates.Add(new ParticipantTemplate(
@@ -109,7 +103,6 @@ public class LlmThinkTankSettingsService
                 ProviderId: "gemini",
                 DisplayName: "Gemini",
                 PersonalityMarkdown: "You are Gemini, made by Google. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be analytical and creative. 2-3 sentences max.",
-                CustomInstructions: null,
                 AuthOverrideJson: null));
 
             Templates.Add(new ParticipantTemplate(
@@ -117,7 +110,6 @@ public class LlmThinkTankSettingsService
                 ProviderId: "deepseek",
                 DisplayName: "DeepSeek",
                 PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
-                CustomInstructions: null,
                 AuthOverrideJson: null));
 
             Save();
@@ -311,6 +303,5 @@ public class LlmThinkTankSettingsService
         string ProviderId,
         string DisplayName,
         string PersonalityMarkdown,
-        string? CustomInstructions,
         string? AuthOverrideJson);
 }
