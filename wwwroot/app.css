@@ -1129,8 +1129,10 @@ html, body {
     margin-bottom: 1.5rem;
     max-height: 60vh;
     overflow-y: auto;
-    padding-right: 0.25rem;
+    padding: 0.75rem;
     scroll-behavior: smooth;
+    border: 1px solid var(--border);
+    border-radius: 14px;
 }
 
 .messages::-webkit-scrollbar { width: 4px; }
