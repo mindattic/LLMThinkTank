@@ -296,8 +296,8 @@ main {
 
 .user-chat {
     display: flex;
-    gap: var(--gutter);
-    padding: var(--gutter) 0 0;
+    gap: 10px;
+    padding: 10px 0 0;
     align-items: center;
 }
 
@@ -311,7 +311,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--gutter);
+    gap: 12px;
     padding-bottom: 0.5rem;
 }
 
@@ -319,7 +319,7 @@ main {
     position: sticky;
     bottom: 0;
     background: var(--surface);
-    padding-top: var(--gutter);
+    padding-top: 10px;
 }
 
 .jump-to-bottom {
@@ -339,7 +339,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--gutter);
+    gap: 12px;
 }
 
 .topic-title {
@@ -358,7 +358,7 @@ main {
     border: 1px solid var(--border, rgba(255,255,255,0.15));
     background: color-mix(in srgb, var(--surface, #111) 80%, transparent);
     color: var(--text, #e0e0f0);
-    border-radius: var(--radius);
+    border-radius: 12px;
     padding: 0 12px;
     height: var(--control-height);
     outline: none;
@@ -372,7 +372,7 @@ main {
     border: 1px solid color-mix(in srgb, var(--gemini, #60a5fa) 60%, var(--border, #333) 40%);
     background: color-mix(in srgb, var(--gemini, #60a5fa) 18%, var(--surface, #111) 82%);
     color: var(--text, #e0e0f0);
-    border-radius: var(--radius);
+    border-radius: 12px;
     padding: 0 14px;
     height: var(--control-height);
     white-space: nowrap;
@@ -396,14 +396,14 @@ main {
 .templates-split {
     display: grid;
     grid-template-columns: 280px 1fr;
-    gap: var(--gutter);
+    gap: 12px;
 }
 
 .templates-left {
     border: 1px solid var(--border, rgba(255,255,255,0.15));
     background: var(--surface, rgba(255,255,255,0.04));
-    border-radius: var(--radius);
-    padding: var(--gutter);
+    border-radius: 16px;
+    padding: 10px;
     min-height: 420px;
     overflow: hidden;
     display: flex;
@@ -414,7 +414,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--gutter);
+    gap: 8px;
     padding: 6px 6px 10px;
     color: var(--muted, #aaa);
     font-size: 12px;
@@ -436,18 +436,18 @@ main {
     margin-top: 4px;
     background: var(--surface, #12121a);
     border: 1px solid var(--border, #333);
-    border-radius: var(--radius);
+    border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .add-dropdown-item {
     display: flex;
     align-items: center;
-    gap: var(--gutter);
+    gap: 8px;
     width: 100%;
     padding: 8px 12px;
     border: none;
-    border-radius: var(--radius);
+    border-radius: 8px;
     background: transparent;
     color: var(--text, #e0e0f0);
     font-size: 0.85rem;
@@ -464,7 +464,7 @@ main {
     overflow: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--gutter);
+    gap: 8px;
     padding-right: 4px;
 }
 
@@ -473,7 +473,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: var(--gutter);
+    gap: 10px;
 }
 
 .template-name {
@@ -485,7 +485,7 @@ main {
 .templates-right {
     border: 1px solid var(--border, rgba(255,255,255,0.15));
     background: var(--surface, rgba(255,255,255,0.04));
-    border-radius: var(--radius);
+    border-radius: 16px;
 }
 
 a, .btn-link {
@@ -713,8 +713,6 @@ html[data-theme="mono"] {
 
 :root {
     --control-height: 40px;
-    --gutter: 10px;
-    --radius: 10px;
 }
 
 html, body {
@@ -740,7 +738,7 @@ html, body {
 .conversation-wrap {
     display: flex;
     flex-direction: column;
-    gap: var(--gutter);
+    gap: 10px;
     min-height: 0;
 }
 
@@ -757,7 +755,7 @@ html, body {
     margin-top: 12px;
     border: 1px solid var(--border);
     background: var(--surface);
-    border-radius: var(--radius);
+    border-radius: 16px;
     padding: 12px;
 }
 
@@ -765,7 +763,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--gutter);
+    gap: 12px;
     margin-bottom: 8px;
 }
 
@@ -774,7 +772,7 @@ html, body {
     background: color-mix(in srgb, var(--surface, #111) 70%, transparent);
     color: var(--text, #e0e0f0);
     padding: 6px 10px;
-    border-radius: var(--radius);
+    border-radius: 12px;
     font-size: 12px;
     line-height: 1;
 }
@@ -1134,7 +1132,7 @@ html, body {
     padding: 0.75rem;
     scroll-behavior: smooth;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 14px;
 }
 
 .messages::-webkit-scrollbar { width: 4px; }
@@ -1460,7 +1458,7 @@ html[data-theme="light"] .settings-tabs {
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--muted);
-    border-radius: var(--radius);
+    border-radius: 10px;
     padding: 0 0.75rem;
     height: var(--control-height);
     display: inline-flex;

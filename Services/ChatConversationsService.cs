@@ -7,7 +7,6 @@ public record ParticipantTemplate(
     string ProviderId,
     string DisplayName,
     string PersonalityMarkdown,
-    string? CustomInstructions,
     string? AuthOverrideJson);
 
 public record ChatParticipant(
@@ -16,7 +15,6 @@ public record ChatParticipant(
     string ProviderId,
     string DisplayName,
     string PersonalityMarkdown,
-    string? CustomInstructions,
     string? AuthOverrideJson);
 
 public class ChatConversation
@@ -76,7 +74,6 @@ public class ChatConversationsService
                         p.ProviderId,
                         p.DisplayName,
                         p.PersonalityMarkdown,
-                        p.CustomInstructions,
                         p.AuthOverrideJson));
                 }
 
@@ -140,7 +137,6 @@ public class ChatConversationsService
                 p.ProviderId,
                 p.DisplayName,
                 p.PersonalityMarkdown,
-                p.CustomInstructions,
                 p.AuthOverrideJson)).ToList(),
             Topic: c.Topic,
             Messages: c.Messages.Count == 0 ? null : new List<SettingsService.PersistedMessage>(c.Messages))

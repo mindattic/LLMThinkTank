@@ -23,16 +23,12 @@ public class AppearanceService
 
     public AppearanceMode Mode { get; private set; } = AppearanceMode.Dark;
     public int ControlHeight { get; private set; } = 40;
-    public int Gutter { get; private set; } = 10;
-    public int BorderRadius { get; private set; } = 10;
 
     public AppearanceService(LlmThinkTankSettingsService settings)
     {
         _settings = settings;
         Mode = ParseMode(_settings.AppearanceTheme) ?? AppearanceMode.Dark;
         ControlHeight = _settings.ControlHeight ?? 40;
-        Gutter = _settings.Gutter ?? 10;
-        BorderRadius = _settings.BorderRadius ?? 10;
     }
 
     public event Action? Changed;
@@ -55,24 +51,6 @@ public class AppearanceService
 
         ControlHeight = height;
         _settings.SetControlHeight(height);
-        Changed?.Invoke();
-    }
-
-    public void SetGutter(int px)
-    {
-        px = Math.Clamp(px, 0, 30);
-        if (Gutter == px) return;
-        Gutter = px;
-        _settings.SetGutter(px);
-        Changed?.Invoke();
-    }
-
-    public void SetBorderRadius(int px)
-    {
-        px = Math.Clamp(px, 0, 24);
-        if (BorderRadius == px) return;
-        BorderRadius = px;
-        _settings.SetBorderRadius(px);
         Changed?.Invoke();
     }
 
