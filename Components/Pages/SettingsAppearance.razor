@@ -17,6 +17,18 @@
            value="@Appearance.ControlHeight"
            @oninput="OnControlHeightChanged"
            class="settings-range" />
+
+    <label>Gutter — @(Appearance.Gutter)px</label>
+    <input type="range" min="0" max="30" step="2"
+           value="@Appearance.Gutter"
+           @oninput="OnGutterChanged"
+           class="settings-range" />
+
+    <label>Border Radius — @(Appearance.BorderRadius)px</label>
+    <input type="range" min="0" max="24" step="2"
+           value="@Appearance.BorderRadius"
+           @oninput="OnBorderRadiusChanged"
+           class="settings-range" />
 </div>
 
 @code {
@@ -58,6 +70,24 @@
         }
     }
 
+    private async Task OnGutterChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px))
+        {
+            Appearance.SetGutter(px);
+            await JS.InvokeVoidAsync("LLMThinkTank.setGutter", px);
+        }
+    }
+
+    private async Task OnBorderRadiusChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var px))
+        {
+            Appearance.SetBorderRadius(px);
+            await JS.InvokeVoidAsync("LLMThinkTank.setBorderRadius", px);
+        }
+    }
+
     private async Task Set(AppearanceMode mode)
     {
         Appearance.SetMode(mode);
@@ -71,5 +101,7 @@
 
         await JS.InvokeVoidAsync("LLMThinkTank.setTheme", GetThemeValue(Appearance.Mode));
         await JS.InvokeVoidAsync("LLMThinkTank.setControlHeight", Appearance.ControlHeight);
+        await JS.InvokeVoidAsync("LLMThinkTank.setGutter", Appearance.Gutter);
+        await JS.InvokeVoidAsync("LLMThinkTank.setBorderRadius", Appearance.BorderRadius);
     }
 }

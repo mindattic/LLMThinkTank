@@ -16,6 +16,8 @@ public class LlmThinkTankSettingsService
 
     public string? AppearanceTheme { get; private set; } = "dark";
     public int? ControlHeight { get; private set; } = 40;
+    public int? Gutter { get; private set; } = 10;
+    public int? BorderRadius { get; private set; } = 10;
 
     public LlmThinkTankSettingsService()
     {
@@ -172,6 +174,8 @@ public class LlmThinkTankSettingsService
 
             AppearanceTheme = string.IsNullOrWhiteSpace(dto.AppearanceTheme) ? "dark" : dto.AppearanceTheme;
             ControlHeight = dto.ControlHeight ?? 40;
+            Gutter = dto.Gutter ?? 10;
+            BorderRadius = dto.BorderRadius ?? 10;
             return true;
         }
         catch
@@ -190,7 +194,9 @@ public class LlmThinkTankSettingsService
                 Templates = Templates,
                 Conversations = Conversations,
                 AppearanceTheme = AppearanceTheme,
-                ControlHeight = ControlHeight
+                ControlHeight = ControlHeight,
+                Gutter = Gutter,
+                BorderRadius = BorderRadius
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(dto, new System.Text.Json.JsonSerializerOptions
@@ -222,6 +228,18 @@ public class LlmThinkTankSettingsService
     public void SetControlHeight(int height)
     {
         ControlHeight = height;
+        Save();
+    }
+
+    public void SetGutter(int px)
+    {
+        Gutter = px;
+        Save();
+    }
+
+    public void SetBorderRadius(int px)
+    {
+        BorderRadius = px;
         Save();
     }
 
@@ -284,6 +302,8 @@ public class LlmThinkTankSettingsService
         public List<PersistedConversation>? Conversations { get; set; }
         public string? AppearanceTheme { get; set; }
         public int? ControlHeight { get; set; }
+        public int? Gutter { get; set; }
+        public int? BorderRadius { get; set; }
     }
 
     public sealed record PersistedConversation(
