@@ -6,7 +6,12 @@
       "Bash(find D:ProjectsLLMThinkTankComponentsPages -name *.css)",
       "Bash(find D:ProjectsLLMThinkTankwwwroot -name *.css)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//d/Projects/LLMThinkTank/**)",
+      "Bash(python3 -c \":*)",
+      "Bash(powershell.exe -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
