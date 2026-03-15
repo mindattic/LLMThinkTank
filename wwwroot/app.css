@@ -260,7 +260,7 @@ main {
 /* Think Tank status log tabs */
 .status-log-tabs {
     display: inline-flex;
-    gap: 8px;
+    gap: var(--gutter);
 }
 
 .status-log-tab {
@@ -268,7 +268,7 @@ main {
     background: color-mix(in srgb, var(--surface, #111) 70%, transparent);
     color: var(--text, #e0e0f0);
     padding: 6px 10px;
-    border-radius: 12px;
+    border-radius: var(--radius);
     font-size: 12px;
     line-height: 1;
 }
@@ -608,7 +608,7 @@ h1:focus {
 
 /* Settings tab content padding */
 .settings-panel {
-    padding: 10px;
+    padding: var(--gutter);
 }
 
 html[data-theme="light"] {
@@ -802,7 +802,7 @@ html, body {
     align-items: center;
     gap: 0.6rem;
     padding: 0.45rem 0.75rem;
-    border-radius: 12px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
@@ -910,7 +910,7 @@ html, body {
 .setup-panel {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius);
     padding: 2rem;
     display: flex;
     flex-direction: column;
@@ -931,7 +931,7 @@ html, body {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0.75rem 1rem;
     font-size: 1rem;
@@ -985,7 +985,7 @@ html, body {
 .key-row input {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0.55rem 0.8rem;
     font-size: 0.9rem;
@@ -1020,7 +1020,7 @@ html, body {
     width: 70px;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0.45rem 0.7rem;
     font-size: 1rem;
@@ -1034,7 +1034,7 @@ html, body {
 .error-msg {
     background: #2a0d0d;
     border: 1px solid #aa3333;
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 0.65rem 1rem;
     color: #ff8080;
     font-size: 0.9rem;
@@ -1044,7 +1044,7 @@ html, body {
     align-self: flex-start;
     background: linear-gradient(135deg, var(--openai), var(--gemini));
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: #fff;
     height: var(--control-height);
     cursor: pointer;
@@ -1076,7 +1076,7 @@ html, body {
 
 .score-card {
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     padding: 0.6rem 0.8rem;
     display: flex;
     align-items: center;
@@ -1141,7 +1141,7 @@ html, body {
 .conversation-wrap {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 18px;
+    border-radius: var(--radius);
     padding: 1rem;
 }
 
@@ -1166,7 +1166,7 @@ html, body {
 
 .member-list {
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius);
     overflow: hidden;
     background: color-mix(in srgb, var(--bg) 70%, transparent);
 }
@@ -1195,7 +1195,7 @@ html, body {
     align-items: center;
     gap: 0.55rem;
     padding: 0.45rem 0.6rem;
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--text);
     font-weight: 800;
     font-size: 0.9rem;
@@ -1222,7 +1222,7 @@ html, body {
 .status-log {
     margin-top: 1rem;
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius);
     overflow: hidden;
     background: color-mix(in srgb, var(--surface) 85%, transparent);
 }
@@ -1270,7 +1270,7 @@ html, body {
 }
 
 .message-bubble {
-    border-radius: 14px;
+    border-radius: var(--radius);
     padding: 1rem 1.2rem;
     border: 1px solid var(--border);
     animation: slideIn 0.3s ease;
@@ -1328,7 +1328,7 @@ html, body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.2rem;
-    border-radius: 14px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     font-size: 0.85rem;
     font-weight: 700;
@@ -1387,7 +1387,7 @@ html, body {
     padding: 1rem 1.2rem;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     font-size: 0.9rem;
     color: var(--muted);
     flex-wrap: wrap;
@@ -1397,7 +1397,7 @@ html, body {
 .reset-btn {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
     height: var(--control-height);
@@ -1432,7 +1432,7 @@ html, body {
 .settings-panel {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius);
     overflow: hidden;
     width: 100%;
 }
@@ -1480,7 +1480,7 @@ html[data-theme="light"] .settings-tabs {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    border-radius: 10px;
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
@@ -1551,7 +1551,7 @@ html[data-theme="light"] .settings-tabs {
 .settings-form input {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0 0.9rem;
     height: var(--control-height);
@@ -1564,7 +1564,7 @@ html[data-theme="light"] .settings-tabs {
 .settings-form select {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0 0.8rem;
     height: var(--control-height);
@@ -1581,7 +1581,7 @@ html[data-theme="light"] .settings-tabs {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     color: var(--text);
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
@@ -1607,7 +1607,7 @@ html[data-theme="light"] .settings-tabs {
 .settings-chat {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius);
     padding: 1rem;
 }
 
