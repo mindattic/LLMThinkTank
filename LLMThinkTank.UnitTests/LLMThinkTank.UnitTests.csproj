@@ -19,9 +19,7 @@
     <Compile Include="**\*.cs" Exclude="obj\**\*;bin\**\*" />
   </ItemGroup>
 
-  <!--
-    Avoid ProjectReference to the MAUI head project during unit test runs.
-    The MAUI project triggers XAML compilation and multi-targeting, which is not suitable for fast unit tests.
-    Prefer extracting testable logic into a separate class library and referencing that instead.
-  -->
+  <ItemGroup>
+    <ProjectReference Include="..\LLMThinkTank.Core\LLMThinkTank.Core.csproj" />
+  </ItemGroup>
 </Project>

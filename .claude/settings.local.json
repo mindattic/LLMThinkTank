@@ -12,7 +12,29 @@
       "Bash(powershell.exe -c \":*)",
       "Bash(node -e \":*)",
       "Bash(echo \"exit: $?\")",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(xargs grep:*)",
+      "Bash(wc -l /d/Projects/LLMThinkTank/Services/*.cs)",
+      "Bash(cp Components/Layout/MainLayout.razor LLMThinkTank.Shared/Components/Layout/)",
+      "Bash(cp Components/Layout/MainLayout.razor.css LLMThinkTank.Shared/Components/Layout/)",
+      "Bash(cp Components/Layout/NavMenu.razor LLMThinkTank.Shared/Components/Layout/)",
+      "Bash(cp Components/Layout/NavMenu.razor.css LLMThinkTank.Shared/Components/Layout/)",
+      "Bash(cp Components/Pages/Home.razor LLMThinkTank.Shared/Components/Pages/)",
+      "Bash(cp Components/Pages/Chat.razor LLMThinkTank.Shared/Components/Pages/)",
+      "Bash(cp Components/Pages/Settings.razor LLMThinkTank.Shared/Components/Pages/)",
+      "Bash(cp Components/Pages/SettingsAppearance.razor LLMThinkTank.Shared/Components/Pages/)",
+      "Bash(cp Components/Pages/NotFound.razor LLMThinkTank.Shared/Components/Pages/)",
+      "Bash(cp Components/Shared/ConfirmationDialog.razor LLMThinkTank.Shared/Components/Shared/)",
+      "Bash(cp wwwroot/app.css LLMThinkTank.Shared/wwwroot/)",
+      "Bash(cp -r wwwroot/lib LLMThinkTank.Shared/wwwroot/)",
+      "Bash(cp -r Platforms LLMThinkTank.MAUI/)",
+      "Bash(cp -r Resources LLMThinkTank.MAUI/)",
+      "Bash(cp -r Properties LLMThinkTank.MAUI/)",
+      "Bash(rm -rf Services Components wwwroot Platforms Resources Properties)",
+      "Bash(rm -f LLMThinkTank.csproj MauiProgram.cs App.xaml App.xaml.cs MainPage.xaml MainPage.xaml.cs)",
+      "Bash(dotnet test:*)",
+      "Bash(rm -rf bin obj)",
+      "Bash(rm -f LLMThinkTank.csproj.user)"
     ]
   }
 }

@@ -1,0 +1,926 @@
+@page "/thinktank"
+@using Microsoft.AspNetCore.Components.Web
+@inject LlmThinkTankService ThinkTankService
+@inject SettingsService Settings
+@inject ChatConversationsService Conversations
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>LLM Think Tank</PageTitle>
+
+<div class="thinktank-container">
+
+    <header class="thinktank-header">
+        <h1>LLM <span class="accent">Think Tank</span></h1>
+        <p class="subtitle">Siloed conversations per tab. Humans only choose the prompt and the participants.</p>
+    </header>
+
+    <div class="chat-tabs">
+        @foreach (var c in Conversations.Conversations)
+        {
+            <button class="chat-tab @(Conversations.ActiveConversation?.ChatId == c.ChatId ? "active" : "")"
+                    @onclick="(() => Conversations.SetActive(c.ChatId))"
+                    @oncontextmenu="((e) => OpenTabContextMenu(e, c.ChatId))" @oncontextmenu:preventDefault>
+                <span class="chat-tab-title">@c.Title</span>
+                @if (_states.TryGetValue(c.ChatId, out var tabState) && tabState.Running)
+                {
+                    <span class="chat-tab-typing"><span class="dot dot1">.</span><span class="dot dot2">.</span><span class="dot dot3">.</span></span>
+                }
+                else
+                {
+                    <span class="chat-tab-id">@c.ChatId[..Math.Min(6, c.ChatId.Length)]</span>
+                }
+                <span class="chat-tab-close" title="Close" @onclick:stopPropagation @onclick="(() => CloseTab(c.ChatId))">×</span>
+            </button>
+        }
+        <button class="chat-tab add" @onclick="NewTab">+ New</button>
+    </div>
+
+    @if (_contextMenuVisible)
+    {
+        <div class="context-menu-overlay" @onclick="CloseContextMenu">
+            <div class="context-menu" style="left:@(_contextMenuX)px; top:@(_contextMenuY)px;" @onclick:stopPropagation>
+                <button class="context-menu-item" @onclick="StartRenameTab">Rename</button>
+                <button class="context-menu-item" @onclick="CloseContextMenuTab">Close</button>
+            </div>
+        </div>
+    }
+
+    @if (_renameVisible)
+    {
+        <div class="dialog-overlay" @onclick="CancelRename">
+            <div class="dialog-box" @onclick:stopPropagation>
+                <div class="dialog-title">Rename Tab</div>
+                <input class="rename-input" @bind="_renameText" @bind:event="oninput" @onkeydown="OnRenameKeyDown" />
+                <div class="dialog-actions" style="margin-top:1rem;">
+                    <button class="reset-btn" @onclick="CancelRename">Cancel</button>
+                    <button class="start-btn" @onclick="ConfirmRename">Save</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Active is null)
+    {
+        <div class="setup-panel">
+            <p>No conversation tabs yet.</p>
+            <button class="start-btn" @onclick="NewTab">Create a conversation</button>
+        </div>
+    }
+    else
+    {
+        @if (!ActiveState.Running && ActiveState.Messages.Count == 0)
+        {
+            <div class="setup-panel">
+                <label>Discussion Topic</label>
+                <textarea value="@Active.Topic" @oninput="OnTopicInput" rows="3" placeholder="e.g. Is consciousness computational?" />
+
+                <div class="random-topic-row">
+                    <span style="flex:1"></span>
+                    <div class="random-topic-wrap">
+                        <button class="start-btn random-topic-btn" @onclick="ToggleRandomDropdown" disabled="@_generatingTopic">
+                            @(_generatingTopic ? "Generating..." : "Random")
+                        </button>
+                        @if (_showRandomDropdown)
+                        {
+                            <div class="context-menu-overlay" @onclick="(() => _showRandomDropdown = false)"></div>
+                            <div class="random-topic-dropdown">
+                                @foreach (var m in ThinkTankService.Models)
+                                {
+                                    <button class="context-menu-item" @onclick="(() => GenerateRandomTopic(m.Id))">
+                                        <span>@m.Avatar</span> @m.Name
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="participants">
+                    <label>Participants</label>
+                    <div class="participant-grid">
+                        @foreach (var t in Settings.Templates)
+                        {
+                            var selected = Active.Participants.Any(p => p.TemplateId == t.TemplateId);
+                            <div class="tooltip-wrap">
+                                <button class="participant-pill @(selected ? "selected" : "")" @onclick="(() => ToggleParticipant(t))">
+                                    <span class="pill-avatar">@GetProviderAvatar(t.ProviderId)</span>
+                                    <span>@t.DisplayName</span>
+                                </button>
+                                <div class="tooltip-card">
+                                    <div class="tooltip-card-name">@t.DisplayName</div>
+                                    <div class="tooltip-card-provider" style="color: var(--@t.ProviderId);">@t.ProviderId</div>
+                                    <div class="tooltip-card-personality">@(t.PersonalityMarkdown?.Length > 200 ? t.PersonalityMarkdown[..200] + "..." : t.PersonalityMarkdown)</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end;">
+                    <button class="start-btn" @onclick="ToggleRun">Start</button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(ActiveState.Error))
+                {
+                    <div class="error-msg">@ActiveState.Error</div>
+                }
+            </div>
+        }
+
+        @if (ActiveState.Running || ActiveState.Messages.Count > 0)
+        {
+            <div class="conversation-wrap">
+                <div class="conversation-grid">
+                    <div class="member-column">
+                        <aside class="member-list" aria-label="Participants">
+                            <div class="member-list-header">Participants (@Active.Participants.Count)</div>
+                            <div class="member-list-items">
+                                @foreach (var p in Active.Participants)
+                                {
+                                    <div class="member-item @(ActiveState.CurrentSpeaker == p.ParticipantId ? "active" : "")">
+                                        <span class="member-avatar">@GetProviderAvatar(p.ProviderId)</span>
+                                        <span class="member-name">@p.DisplayName</span>
+                                        @if (ActiveState.CurrentSpeaker == p.ParticipantId)
+                                        {
+                                            <span class="member-typing" aria-label="Speaking">
+                                                <span class="dot dot1">.</span>
+                                                <span class="dot dot2">.</span>
+                                                <span class="dot dot3">.</span>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </aside>
+                        @if (!_followConversation)
+                        {
+                            <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
+                        }
+                    </div>
+
+                    <div class="chat-column">
+                        <div class="chat-header">
+                            <div class="topic-title">@Active.Topic</div>
+                            @if (ActiveState.Running)
+                            {
+                                <button class="start-btn" @onclick="ToggleRun">Stop</button>
+                            }
+                            else
+                            {
+                                <button class="start-btn" @onclick="ToggleRun">Start</button>
+                            }
+                        </div>
+
+                        <div class="messages-wrap">
+                            @if (_userChatFocused && ActiveState.Running)
+                            {
+                                <div class="conversation-paused-overlay">
+                                    <span>Conversation Paused</span>
+                                </div>
+                            }
+                            <div class="messages" @ref="_messagesDiv" @onscroll="OnMessagesScrolled">
+                                @foreach (var msg in ActiveState.Messages)
+                                {
+                                    var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == msg.ParticipantId);
+                                    <div class="message-bubble @(p?.ProviderId ?? "") @(msg.IsError ? "error-bubble" : "") @(msg.ParticipantId == "user" ? "user-bubble" : "")">
+                                        <div class="bubble-header">
+                                            <span class="bubble-avatar">@(msg.ParticipantId == "user" ? "👤" : GetProviderAvatar(p?.ProviderId ?? ""))</span>
+                                            <span class="bubble-name">@(msg.ParticipantId == "user" ? "You" : (p?.DisplayName ?? msg.ParticipantId))</span>
+                                            <span class="bubble-round">Round @msg.Round</span>
+                                        </div>
+                                        <div class="bubble-text">@msg.Text</div>
+                                    </div>
+                                }
+
+                                @if (ActiveState.Running && ActiveState.CurrentSpeaker is not null)
+                                {
+                                    var p = Active.Participants.FirstOrDefault(x => x.ParticipantId == ActiveState.CurrentSpeaker);
+                                    <div class="typing-indicator @(p?.ProviderId ?? "")">
+                                        <span class="bubble-avatar">@GetProviderAvatar(p?.ProviderId ?? "")</span>
+                                        <span class="bubble-name">@(p?.DisplayName ?? "")</span>
+                                        <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="chat-bottom-bar">
+                            <div class="user-chat">
+                                <input class="user-chat-input" placeholder="Type a message to steer the conversation…" @bind="_userMessage" @bind:event="oninput"
+                                       @onfocus="OnUserChatFocus" @onblur="OnUserChatBlur" @onkeydown="OnUserChatKeyDown" />
+                                <button class="user-chat-send" @onclick="SendUserMessage" disabled="@(string.IsNullOrWhiteSpace(_userMessage) || ActiveState.Running == false)">Send</button>
+                                <button class="user-chat-clear" @onclick="ClearUserChat" title="Clear and unpause">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!ActiveState.Running && ActiveState.Messages.Count > 0)
+                {
+                    <div class="done-bar">
+                        <span>Conversation complete — @ActiveState.Messages.Count messages exchanged.</span>
+                    </div>
+                }
+            </div>
+
+            <div class="status-log">
+            <div class="status-log-header">
+                <span>Status log</span>
+                <span class="status-log-tabs">
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Perspective ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Perspective)">Perspective</button>
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Context ? "active" : "")" @onclick="(() => { _activeStatusTab = StatusTab.Context; _ = RefreshContextFiles(); })">Context</button>
+                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Diagnostics ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Diagnostics)">Diagnostics</button>
+                </span>
+            </div>
+            <div class="status-log-items">
+                @if (_activeStatusTab == StatusTab.Perspective)
+                {
+                    @if (ActiveState.StatusEvents.Count == 0)
+                    {
+                        <div class="status-log-empty">No status events yet.</div>
+                    }
+                    else
+                    {
+                        @foreach (var e in ActiveState.StatusEvents)
+                        {
+                            <div class="status-log-item">
+                                <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                                <span class="status-text">@e.Text</span>
+                            </div>
+                        }
+                    }
+                }
+                else if (_activeStatusTab == StatusTab.Context)
+                {
+                    @if (_contextFiles.Count == 0)
+                    {
+                        <div class="status-log-empty">No perspective files yet. Start a conversation to generate them.</div>
+                    }
+                    else
+                    {
+                        @foreach (var kv in _contextFiles)
+                        {
+                            <div class="context-file-entry">
+                                <div class="context-file-name">@kv.Key</div>
+                                <pre class="context-file-content">@kv.Value</pre>
+                            </div>
+                        }
+                    }
+                }
+                else
+                {
+                    @if (ActiveState.Diagnostics.Count == 0)
+                    {
+                        <div class="status-log-empty">No diagnostics yet.</div>
+                    }
+                    else
+                    {
+                        @foreach (var e in ActiveState.Diagnostics)
+                        {
+                            <div class="status-log-item">
+                                <span class="status-ts">@e.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                                <span class="status-text">@e.Text</span>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+        </div>
+    }
+    }
+</div>
+
+@code {
+    private enum StatusTab { Perspective, Context, Diagnostics }
+    private StatusTab _activeStatusTab = StatusTab.Perspective;
+    private Dictionary<string, string> _contextFiles = new();
+    private ChatConversation? Active => Conversations.ActiveConversation;
+    private ConversationUiState ActiveState => GetState(Active);
+
+    private readonly Dictionary<string, ConversationUiState> _states = new();
+
+    private ElementReference _messagesDiv;
+    private bool _followConversation = true;
+    private int _lastRenderedMessageCount;
+    private string _userMessage = "";
+    private bool _userChatFocused;
+
+    protected override void OnInitialized()
+    {
+        Conversations.Changed += OnConversationsChanged;
+        ThinkTankService.Diagnostics += OnDiagnostics;
+        RestoreFromConversationState();
+        _ = RestoreAllAsync();
+        if (Conversations.Conversations.Count == 0)
+            NewTab();
+    }
+
+    private void OnDiagnostics(string providerId, string raw, bool isError)
+    {
+        if (Active is null)
+            return;
+
+        var ts = DateTimeOffset.UtcNow;
+        var prefix = isError ? $"{providerId.ToUpperInvariant()} ERROR" : $"{providerId.ToUpperInvariant()} OK";
+        var text = $"{prefix}: {raw}";
+        if (text.Length > 4000)
+            text = text[..4000] + "…";
+
+        var e = new PersistedStatusEvent(ts, text);
+        Active.Diagnostics.Add(e);
+        ActiveState.Diagnostics.Add(new StatusEvent(e.Timestamp, e.Text));
+        Conversations.NotifyChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        var count = ActiveState.Messages.Count;
+        if (count != _lastRenderedMessageCount)
+        {
+            _lastRenderedMessageCount = count;
+            if (_followConversation)
+                await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+
+            // Auto-refresh context tab when new messages arrive
+            if (_activeStatusTab == StatusTab.Context)
+                _ = RefreshContextFiles();
+        }
+    }
+
+    private void RestoreFromConversationState()
+    {
+        foreach (var c in Conversations.Conversations)
+        {
+            var state = GetState(c);
+            state.Messages.Clear();
+            foreach (var m in c.Messages)
+            {
+                state.Messages.Add(new ConversationUiMessage
+                {
+                    ParticipantId = m.ParticipantId,
+                    Text = m.Text,
+                    Round = m.Round,
+                    IsError = m.IsError
+                });
+            }
+
+            state.StatusEvents.Clear();
+            foreach (var e in c.StatusEvents)
+                state.StatusEvents.Add(new StatusEvent(e.Timestamp, e.Text));
+
+            state.Diagnostics.Clear();
+            foreach (var e in c.Diagnostics)
+                state.Diagnostics.Add(new StatusEvent(e.Timestamp, e.Text));
+        }
+    }
+
+    private async Task RestoreAllAsync()
+    {
+        foreach (var c in Conversations.Conversations)
+        {
+            try
+            {
+                var turns = await ChatStorage.LoadTurnsAsync(c.ChatId);
+                if (turns.Count == 0)
+                    continue;
+
+                var state = GetState(c);
+                state.Messages.Clear();
+                c.Messages.Clear();
+                foreach (var t in turns)
+                {
+                    var msg = new ConversationUiMessage
+                    {
+                        ParticipantId = t.ParticipantId,
+                        Text = t.Text,
+                        Round = t.Round,
+                        IsError = t.IsError
+                    };
+
+                    state.Messages.Add(msg);
+                    c.Messages.Add(new PersistedMessage(msg.ParticipantId, msg.Text, msg.Round, msg.IsError));
+                }
+
+                Conversations.NotifyChanged();
+            }
+            catch { }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConversationsChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        // When switching tabs, snap to bottom
+        _followConversation = true;
+        await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+    }
+
+    private async Task OnMessagesScrolled()
+    {
+        _followConversation = await JS.InvokeAsync<bool>("LLMThinkTank.isNearBottom", _messagesDiv, 60);
+    }
+
+    private async Task JumpToBottom()
+    {
+        _followConversation = true;
+        await JS.InvokeVoidAsync("LLMThinkTank.scrollToBottom", _messagesDiv);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private ConversationUiState GetState(ChatConversation? c)
+    {
+        if (c is null)
+            return new ConversationUiState();
+
+        if (!_states.TryGetValue(c.ChatId, out var state))
+        {
+            state = new ConversationUiState();
+            _states[c.ChatId] = state;
+        }
+        return state;
+    }
+
+    private void NewTab()
+    {
+        var convo = Conversations.CreateConversation($"Chat {Conversations.Conversations.Count + 1}");
+        // No default participants; user selects 2+ personalities per conversation.
+    }
+
+    private void CloseTab(string chatId)
+    {
+        Conversations.CloseConversation(chatId);
+        _states.Remove(chatId);
+    }
+
+    private void ToggleParticipant(ParticipantTemplate t)
+    {
+        if (Active is null)
+            return;
+
+        var existing = Active.Participants.FirstOrDefault(p => p.TemplateId == t.TemplateId);
+        if (existing is not null)
+            Active.Participants.Remove(existing);
+        else
+            AddParticipant(Active, t);
+
+        Conversations.NotifyChanged();
+    }
+
+    private void AddParticipant(ChatConversation convo, ParticipantTemplate t)
+    {
+        convo.Participants.Add(new ChatParticipant(
+            ParticipantId: ChatConversationsService.NewId(),
+            TemplateId: t.TemplateId,
+            ProviderId: t.ProviderId,
+            DisplayName: t.DisplayName,
+            PersonalityMarkdown: t.PersonalityMarkdown,
+            AuthOverrideJson: t.AuthOverrideJson));
+    }
+
+    private void OnTopicInput(ChangeEventArgs e)
+    {
+        if (Active is null)
+            return;
+
+        Active.Topic = e.Value?.ToString() ?? "";
+        Conversations.NotifyChanged();
+    }
+
+    private string GetProviderAvatar(string providerId)
+        => ThinkTankService.Models.FirstOrDefault(m => m.Id == providerId)?.Avatar ?? "?";
+
+    private async Task StartActive()
+    {
+        if (Active is null)
+            return;
+
+        var state = ActiveState;
+        state.Error = null;
+
+        if (string.IsNullOrWhiteSpace(Active.Topic)) { state.Error = "Please enter a discussion prompt."; return; }
+        if (Active.Participants.Count < 2) { state.Error = "Pick at least 2 participants."; return; }
+
+        state.Running = true;
+        state.StopRequested = false;
+        state.Messages.Clear();
+        state.CompletedTurns = 0;
+        state.TotalTurns = 0;
+
+        var sharedHistory = new List<SharedTurn>();
+        if (_pendingUserTurns.Count > 0)
+        {
+            sharedHistory.AddRange(_pendingUserTurns);
+            _pendingUserTurns.Clear();
+        }
+        Conversations.NotifyChanged();
+        await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = Active.Topic, ts = DateTimeOffset.UtcNow });
+
+        var round = 0;
+        var titleGenerated = false;
+        while (!state.StopRequested)
+        {
+            while (_userChatFocused && !state.StopRequested)
+                await Task.Delay(50);
+
+            round++;
+            foreach (var p in Active.Participants)
+            {
+                if (state.StopRequested)
+                    break;
+
+                while (_userChatFocused && !state.StopRequested)
+                    await Task.Delay(50);
+
+                state.CurrentSpeaker = p.ParticipantId;
+                StateHasChanged();
+                await Task.Delay(50);
+
+                try
+                {
+                    if (_pendingUserTurns.Count > 0)
+                    {
+                        sharedHistory.AddRange(_pendingUserTurns);
+                        _pendingUserTurns.Clear();
+                    }
+
+                    var response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, Active.Topic!, sharedHistory);
+
+                    sharedHistory.Add(new SharedTurn
+                    {
+                        ModelId = p.ParticipantId,
+                        ModelName = p.DisplayName,
+                        Text = response,
+                        Round = round
+                    });
+
+                    state.Messages.Add(new ConversationUiMessage
+                    {
+                        ParticipantId = p.ParticipantId,
+                        Text = response,
+                        Round = round
+                    });
+
+                    Active.Messages.Add(new PersistedMessage(p.ParticipantId, response, round, false));
+
+                    await ChatStorage.AppendChatJsonAsync(Active.ChatId, new
+                    {
+                        type = "turn",
+                        chatId = Active.ChatId,
+                        participantId = p.ParticipantId,
+                        templateId = p.TemplateId,
+                        providerId = p.ProviderId,
+                        displayName = p.DisplayName,
+                        round,
+                        text = response,
+                        ts = DateTimeOffset.UtcNow
+                    });
+
+                    await ChatStorage.WritePerspectiveAsync(Active.ChatId, p.ParticipantId,
+                        $"# Perspective\n\n- ChatId: `{Active.ChatId}`\n- ParticipantId: `{p.ParticipantId}`\n- DisplayName: `{p.DisplayName}`\n- Provider: `{p.ProviderId}`\n\n## Personality\n\n{p.PersonalityMarkdown}\n\n## Latest\n\nRound {round}: {response}\n");
+
+                    // Stub "status events" to show cross-participant observations.
+                    // Later this should be generated by each participant updating its own perspective and emitting diffs.
+                    state.StatusEvents.Add(new StatusEvent(DateTimeOffset.UtcNow, $"{p.DisplayName} updated their perspective for this chat."));
+                    Active.StatusEvents.Add(new PersistedStatusEvent(DateTimeOffset.UtcNow, $"{p.DisplayName} updated their perspective for this chat."));
+                    Conversations.NotifyChanged();
+                }
+                catch (Exception ex)
+                {
+                    state.Messages.Add(new ConversationUiMessage
+                    {
+                        ParticipantId = p.ParticipantId,
+                        Text = $"[Error: {ex.Message}]",
+                        Round = round,
+                        IsError = true
+                    });
+
+                    Active.Messages.Add(new PersistedMessage(p.ParticipantId, $"[Error: {ex.Message}]", round, true));
+                    Conversations.NotifyChanged();
+                }
+
+                state.CompletedTurns++;
+                state.CurrentSpeaker = null;
+                StateHasChanged();
+                await Task.Delay(400);
+            }
+
+            // After the first round, generate a chat title in the background
+            if (round == 1 && !titleGenerated)
+            {
+                titleGenerated = true;
+                _ = GenerateChatTitleAsync(Active, state);
+            }
+        }
+
+        state.Running = false;
+        state.CurrentSpeaker = null;
+        StateHasChanged();
+    }
+
+    private async Task GenerateChatTitleAsync(ChatConversation convo, ConversationUiState state)
+    {
+        try
+        {
+            var topic = convo.Topic ?? "";
+            var suggestions = new List<string>();
+
+            // Ask each participant to suggest a short title
+            foreach (var p in convo.Participants)
+            {
+                try
+                {
+                    var suggestion = await ThinkTankService.CallProvider(
+                        p.ProviderId,
+                        "You suggest concise chat titles. Output ONLY the title, no quotes, no punctuation, no explanation. Max 5 words.",
+                        p.AuthOverrideJson,
+                        $"Suggest a short, catchy title for a group discussion about: {topic}",
+                        new List<SharedTurn>());
+
+                    var cleaned = suggestion.Trim().Trim('"', '\'', '.').Trim();
+                    if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length <= 50)
+                        suggestions.Add(cleaned);
+                }
+                catch { /* skip this participant */ }
+            }
+
+            if (suggestions.Count == 0)
+                return;
+
+            // Have one participant pick the best title
+            string bestTitle;
+            if (suggestions.Count == 1)
+            {
+                bestTitle = suggestions[0];
+            }
+            else
+            {
+                var picker = convo.Participants.First();
+                var numbered = string.Join("\n", suggestions.Select((s, i) => $"{i + 1}. {s}"));
+                try
+                {
+                    var choice = await ThinkTankService.CallProvider(
+                        picker.ProviderId,
+                        "You pick the best chat title from a list. Output ONLY the chosen title text, nothing else.",
+                        picker.AuthOverrideJson,
+                        $"Pick the best title for a discussion about \"{topic}\" from these suggestions:\n{numbered}",
+                        new List<SharedTurn>());
+
+                    bestTitle = choice.Trim().Trim('"', '\'', '.').Trim();
+                    if (string.IsNullOrWhiteSpace(bestTitle) || bestTitle.Length > 50)
+                        bestTitle = suggestions[0];
+                }
+                catch
+                {
+                    bestTitle = suggestions[0];
+                }
+            }
+
+            convo.Title = bestTitle;
+            Conversations.NotifyChanged();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* title generation is best-effort */ }
+    }
+
+    private async Task ToggleRun()
+    {
+        if (Active is null)
+            return;
+
+        if (ActiveState.Running)
+        {
+            ActiveState.StopRequested = true;
+            return;
+        }
+
+        await StartActive();
+    }
+
+    public void Dispose()
+    {
+        Conversations.Changed -= OnConversationsChanged;
+        ThinkTankService.Diagnostics -= OnDiagnostics;
+    }
+
+    private void OnUserChatFocus() => _userChatFocused = true;
+    private void OnUserChatBlur() => _userChatFocused = false;
+
+    private async Task ClearUserChat()
+    {
+        _userMessage = "";
+        _userChatFocused = false;
+        await JS.InvokeVoidAsync("LLMThinkTank.blurActive");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshContextFiles()
+    {
+        if (Active is null) return;
+
+        var files = new Dictionary<string, string>();
+        foreach (var p in Active.Participants)
+        {
+            var content = await ChatStorage.ReadPerspectiveAsync(Active.ChatId, p.ParticipantId);
+            if (!string.IsNullOrWhiteSpace(content))
+                files[p.DisplayName] = content;
+        }
+        _contextFiles = files;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnUserChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendUserMessage();
+            _userChatFocused = false;
+            await JS.InvokeVoidAsync("LLMThinkTank.blurActive");
+        }
+    }
+
+    private async Task SendUserMessage()
+    {
+        if (Active is null)
+            return;
+
+        var text = (_userMessage ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var round = ActiveState.Messages.Count == 0 ? 1 : ActiveState.Messages.Max(m => m.Round);
+
+        var msg = new ConversationUiMessage
+        {
+            ParticipantId = "user",
+            Text = text,
+            Round = round,
+            IsError = false
+        };
+
+        ActiveState.Messages.Add(msg);
+        Active.Messages.Add(new PersistedMessage(msg.ParticipantId, msg.Text, msg.Round, msg.IsError));
+
+        // Append to the storage log so it can be fully recreated.
+        await ChatStorage.AppendChatJsonAsync(Active.ChatId, new
+        {
+            type = "user",
+            chatId = Active.ChatId,
+            round,
+            text,
+            ts = DateTimeOffset.UtcNow
+        });
+
+        // Also push into the next-turn context for all models.
+        // We represent user turns as a pseudo-participant in shared history.
+        // (The run loop rebuilds shared history only in-memory; this keeps it coherent during the session.)
+        _pendingUserTurns.Add(new SharedTurn { ModelId = "user", ModelName = "User", Text = text, Round = round });
+
+        _userMessage = "";
+        Conversations.NotifyChanged();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private readonly List<SharedTurn> _pendingUserTurns = new();
+
+    // Random topic state
+    private bool _showRandomDropdown;
+    private bool _generatingTopic;
+
+    private void ToggleRandomDropdown() => _showRandomDropdown = !_showRandomDropdown;
+
+    private async Task GenerateRandomTopic(string providerId)
+    {
+        _showRandomDropdown = false;
+        _generatingTopic = true;
+        StateHasChanged();
+
+        try
+        {
+            var participant = Settings.Templates.FirstOrDefault(t => t.ProviderId == providerId);
+            var authJson = participant?.AuthOverrideJson;
+
+            var topic = await ThinkTankService.CallProvider(
+                providerId,
+                "You generate interesting, thought-provoking discussion topics for a group of AI systems to debate. Output ONLY the topic as a single sentence or question. No quotes, no explanation.",
+                authJson,
+                "Generate a random, interesting discussion topic. Be creative and varied - philosophy, science, ethics, technology, culture, hypotheticals are all fair game.",
+                new List<SharedTurn>());
+
+            if (Active is not null)
+            {
+                Active.Topic = topic.Trim().Trim('"', '\'');
+                Conversations.NotifyChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            if (Active is not null)
+                Active.Topic = $"[Error generating topic: {ex.Message}]";
+        }
+        finally
+        {
+            _generatingTopic = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // Context menu state
+    private bool _contextMenuVisible;
+    private double _contextMenuX;
+    private double _contextMenuY;
+    private string? _contextMenuChatId;
+
+    // Rename state
+    private bool _renameVisible;
+    private string _renameText = "";
+    private string? _renameChatId;
+
+    private void OpenTabContextMenu(MouseEventArgs e, string chatId)
+    {
+        _contextMenuX = e.ClientX;
+        _contextMenuY = e.ClientY;
+        _contextMenuChatId = chatId;
+        _contextMenuVisible = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        _contextMenuVisible = false;
+        _contextMenuChatId = null;
+    }
+
+    private void CloseContextMenuTab()
+    {
+        if (_contextMenuChatId is not null)
+            CloseTab(_contextMenuChatId);
+        CloseContextMenu();
+    }
+
+    private void StartRenameTab()
+    {
+        _renameChatId = _contextMenuChatId;
+        var convo = Conversations.Conversations.FirstOrDefault(c => c.ChatId == _renameChatId);
+        _renameText = convo?.Title ?? "";
+        _renameVisible = true;
+        CloseContextMenu();
+    }
+
+    private void ConfirmRename()
+    {
+        if (_renameChatId is not null && !string.IsNullOrWhiteSpace(_renameText))
+        {
+            var convo = Conversations.Conversations.FirstOrDefault(c => c.ChatId == _renameChatId);
+            if (convo is not null)
+            {
+                convo.Title = _renameText.Trim();
+                Conversations.NotifyChanged();
+            }
+        }
+        CancelRename();
+    }
+
+    private void CancelRename()
+    {
+        _renameVisible = false;
+        _renameChatId = null;
+    }
+
+    private void OnRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") ConfirmRename();
+        else if (e.Key == "Escape") CancelRename();
+    }
+
+    private class ConversationUiMessage
+    {
+        public string ParticipantId { get; set; } = "";
+        public string Text { get; set; } = "";
+        public int Round { get; set; }
+        public bool IsError { get; set; }
+    }
+
+    private class ConversationUiState
+    {
+        public string Topic { get; set; } = "";
+        public bool Running { get; set; }
+        public bool StopRequested { get; set; }
+        public string? CurrentSpeaker { get; set; }
+        public string? Error { get; set; }
+        public int TotalTurns { get; set; }
+        public int CompletedTurns { get; set; }
+        public double ProgressPct => TotalTurns == 0 ? 0 : (CompletedTurns / (double)TotalTurns) * 100;
+        public List<ConversationUiMessage> Messages { get; } = new();
+        public List<StatusEvent> StatusEvents { get; } = new();
+        public List<StatusEvent> Diagnostics { get; } = new();
+    }
+
+    private record StatusEvent(DateTimeOffset Timestamp, string Text);
+}
