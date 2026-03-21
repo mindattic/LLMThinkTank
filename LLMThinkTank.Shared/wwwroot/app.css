@@ -1725,6 +1725,15 @@ a.settings-tab.active {
 
 .settings-textarea:focus { outline: none; border-color: var(--gemini); }
 
+.api-key-link {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    color: var(--gemini);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+.api-key-link:hover { text-decoration: underline; }
+
 .settings-range {
     width: 100%;
     accent-color: var(--gemini, #60a5fa);

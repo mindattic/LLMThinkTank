@@ -56,6 +56,11 @@
 
                     <div class="templates-right settings-form">
                         <label>Auth config (JSON)</label>
+                        @{ var apiKeyUrl = ThinkTank.Models.FirstOrDefault(m => m.Id == _activeProviderId)?.ApiKeyUrl; }
+                        @if (!string.IsNullOrWhiteSpace(apiKeyUrl))
+                        {
+                            <a href="@apiKeyUrl" target="_blank" rel="noopener noreferrer" class="api-key-link">Get API key →</a>
+                        }
                         <textarea class="settings-textarea" @bind="ProviderAuthJson" @bind:event="oninput" rows="12" placeholder="Enter your API key here..."></textarea>
 
                         <label>Known models</label>
@@ -192,15 +197,31 @@
         ("openai", "ChatGPT"),
         ("claude", "Claude"),
         ("gemini", "Gemini"),
-        ("deepseek", "DeepSeek")
+        ("deepseek", "DeepSeek"),
+        ("mistral", "Mistral"),
+        ("xai", "Grok"),
+        ("groq", "Groq"),
+        ("together", "Together"),
+        ("openrouter", "OpenRouter"),
+        ("fireworks", "Fireworks"),
+        ("cohere", "Cohere"),
+        ("ai21", "AI21")
     };
 
     private static readonly Dictionary<string, string[]> KnownModels = new()
     {
-        ["openai"] = ["gpt-4", "gpt-5", "gpt-5-mini", "gpt-5-nano"],
-        ["claude"] = ["claude-sonnet-4", "claude-sonnet-4-6"],
+        ["openai"] = ["gpt-4.1-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini"],
+        ["claude"] = ["claude-sonnet-4-6", "claude-sonnet-4", "claude-haiku-4-5"],
         ["gemini"] = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite"],
-        ["deepseek"] = ["deepseek-chat", "deepseek-reasoner"]
+        ["deepseek"] = ["deepseek-chat", "deepseek-reasoner"],
+        ["mistral"] = ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest", "codestral-latest"],
+        ["xai"] = ["grok-3-latest", "grok-3-mini-latest"],
+        ["groq"] = ["llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "gemma2-9b-it", "mixtral-8x7b-32768"],
+        ["together"] = ["meta-llama/Llama-4-Scout-17B-16E-Instruct", "meta-llama/Llama-4-Maverick-17B-128E-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
+        ["openrouter"] = ["openai/gpt-4.1-mini", "anthropic/claude-sonnet-4", "google/gemini-2.5-flash", "meta-llama/llama-4-scout"],
+        ["fireworks"] = ["accounts/fireworks/models/llama-v3p3-70b-instruct", "accounts/fireworks/models/mixtral-8x7b-instruct"],
+        ["cohere"] = ["command-r-plus", "command-r", "command-light"],
+        ["ai21"] = ["jamba-1.5-large", "jamba-1.5-mini"]
     };
 
     protected override void OnInitialized()
@@ -253,7 +274,7 @@
             var apiKey = doc.RootElement.TryGetProperty("apiKey", out var k) ? k.GetString() : null;
 
             if (string.IsNullOrWhiteSpace(type))
-                type = _activeProviderId is "openai" or "deepseek" ? "bearer" : _activeProviderId;
+                type = _activeProviderId is "claude" ? "anthropic" : _activeProviderId is "gemini" ? "google" : "bearer";
 
             ProviderAuthJson = $"{{\n  \"type\": \"{type}\",\n  \"apiKey\": \"{apiKey ?? ""}\",\n  \"model\": \"{model}\"\n}}";
         }

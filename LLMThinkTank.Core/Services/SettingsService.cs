@@ -44,10 +44,18 @@ public class LlmThinkTankSettingsService
             return;
         }
 
-        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["openai"] = new ProviderAuthConfig("openai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["mistral"] = new ProviderAuthConfig("mistral", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-large-latest\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["xai"] = new ProviderAuthConfig("xai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-latest\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["groq"] = new ProviderAuthConfig("groq", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"llama-4-scout-17b-16e-instruct\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["together"] = new ProviderAuthConfig("together", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/Llama-4-Scout-17B-16E-Instruct\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["openrouter"] = new ProviderAuthConfig("openrouter", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"openai/gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["fireworks"] = new ProviderAuthConfig("fireworks", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["cohere"] = new ProviderAuthConfig("cohere", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["ai21"] = new ProviderAuthConfig("ai21", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}");
 
         Templates.AddRange(CreateDefaultTemplates());
 
@@ -85,6 +93,62 @@ public class LlmThinkTankSettingsService
             DisplayName: "DeepSeek",
             PersonalityMarkdown: "You are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.",
             AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "mistral",
+            DisplayName: "Mistral",
+            PersonalityMarkdown: "You are Mistral, made by Mistral AI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be sharp and efficient. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "xai",
+            DisplayName: "Grok",
+            PersonalityMarkdown: "You are Grok, made by xAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be witty and bold. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "groq",
+            DisplayName: "Groq",
+            PersonalityMarkdown: "You are an AI running on Groq's ultra-fast inference engine. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be quick and insightful. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "together",
+            DisplayName: "Together",
+            PersonalityMarkdown: "You are an AI running on Together AI's platform. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be collaborative and thoughtful. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "openrouter",
+            DisplayName: "OpenRouter",
+            PersonalityMarkdown: "You are an AI accessed through OpenRouter. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be versatile and engaging. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "fireworks",
+            DisplayName: "Fireworks",
+            PersonalityMarkdown: "You are an AI running on Fireworks AI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be fast and perceptive. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "cohere",
+            DisplayName: "Cohere",
+            PersonalityMarkdown: "You are Command, made by Cohere. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be grounded and clear. 2-3 sentences max.",
+            AuthOverrideJson: null,
+            IsDefault: true),
+        new ParticipantTemplate(
+            TemplateId: ChatConversationsService.NewId(),
+            ProviderId: "ai21",
+            DisplayName: "AI21",
+            PersonalityMarkdown: "You are Jamba, made by AI21 Labs. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be eloquent and reasoned. 2-3 sentences max.",
+            AuthOverrideJson: null,
             IsDefault: true)
     };
 
@@ -115,7 +179,7 @@ public class LlmThinkTankSettingsService
                 }
             }
 
-            foreach (var providerId in new[] { "openai", "claude", "gemini", "deepseek" })
+            foreach (var providerId in new[] { "openai", "claude", "gemini", "deepseek", "mistral", "xai", "groq", "together", "openrouter", "fireworks", "cohere", "ai21" })
             {
                 if (!ProviderAuth.TryGetValue(providerId, out var cfg)) continue;
                 try
@@ -155,6 +219,30 @@ public class LlmThinkTankSettingsService
 
             WriteIfMissing("DeepSeek.md",
                 "# DeepSeek\n\nYou are DeepSeek, made by DeepSeek AI. You are in a live roundtable with other AI systems. Read what they said and engage directly. Be precise and insightful. 2-3 sentences max.\n");
+
+            WriteIfMissing("Mistral.md",
+                "# Mistral\n\nYou are Mistral, made by Mistral AI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be sharp and efficient. 2-3 sentences max.\n");
+
+            WriteIfMissing("Grok.md",
+                "# Grok\n\nYou are Grok, made by xAI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be witty and bold. 2-3 sentences max.\n");
+
+            WriteIfMissing("Groq.md",
+                "# Groq\n\nYou are an AI running on Groq's ultra-fast inference engine. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be quick and insightful. 2-3 sentences max.\n");
+
+            WriteIfMissing("Together.md",
+                "# Together\n\nYou are an AI running on Together AI's platform. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be collaborative and thoughtful. 2-3 sentences max.\n");
+
+            WriteIfMissing("OpenRouter.md",
+                "# OpenRouter\n\nYou are an AI accessed through OpenRouter. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be versatile and engaging. 2-3 sentences max.\n");
+
+            WriteIfMissing("Fireworks.md",
+                "# Fireworks\n\nYou are an AI running on Fireworks AI. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be fast and perceptive. 2-3 sentences max.\n");
+
+            WriteIfMissing("Cohere.md",
+                "# Cohere\n\nYou are Command, made by Cohere. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be grounded and clear. 2-3 sentences max.\n");
+
+            WriteIfMissing("AI21.md",
+                "# AI21\n\nYou are Jamba, made by AI21 Labs. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be eloquent and reasoned. 2-3 sentences max.\n");
         }
         catch { }
 
@@ -300,7 +388,7 @@ public class LlmThinkTankSettingsService
             var model = doc.RootElement.TryGetProperty("model", out var m) ? m.GetString() : null;
             var maxTokens = doc.RootElement.TryGetProperty("maxTokens", out var mt) && mt.ValueKind == System.Text.Json.JsonValueKind.Number ? mt.GetInt32() : (int?)null;
             if (string.IsNullOrWhiteSpace(type))
-                type = providerId is "openai" or "deepseek" ? "bearer" : providerId;
+                type = providerId is "claude" ? "anthropic" : providerId is "gemini" ? "google" : "bearer";
 
             var maxTokensPart = maxTokens.HasValue ? $",\n  \"maxTokens\": {maxTokens.Value}" : "";
             if (string.IsNullOrWhiteSpace(model))

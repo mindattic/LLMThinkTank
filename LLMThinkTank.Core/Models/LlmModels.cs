@@ -6,6 +6,7 @@ public class LlmModel
     public string Name { get; init; } = "";
     public string Avatar { get; init; } = "";
     public string Personality { get; init; } = "";
+    public string ApiKeyUrl { get; init; } = "";
 }
 
 public class SharedTurn
