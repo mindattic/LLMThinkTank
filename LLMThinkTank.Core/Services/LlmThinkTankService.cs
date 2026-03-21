@@ -170,10 +170,11 @@ public class LlmThinkTankService
 
             object? redacted = providerId switch
             {
-                "openai" or "deepseek" or "mistral" or "xai" or "groq" or "together" or "openrouter" or "fireworks"
+                "openai" or "deepseek" or "mistral" or "xai" or "groq" or "together" or "openrouter" or "fireworks" or "ai21"
                     => RedactOpenAi(doc.RootElement),
                 "claude" => RedactClaude(doc.RootElement),
                 "gemini" => RedactGemini(doc.RootElement),
+                "cohere" => RedactCohere(doc.RootElement),
                 _ => null
             };
 
@@ -255,6 +256,21 @@ public class LlmThinkTankService
             candidates = newCands,
             promptFeedback = root.TryGetProperty("promptFeedback", out var pf) ? pf : (JsonElement?)null,
             usageMetadata = root.TryGetProperty("usageMetadata", out var um) ? um : (JsonElement?)null
+        };
+    }
+
+    private static object? RedactCohere(JsonElement root)
+    {
+        if (!root.TryGetProperty("message", out var message))
+            return null;
+
+        return new
+        {
+            id = root.TryGetProperty("id", out var id) ? id.GetString() : null,
+            model = root.TryGetProperty("model", out var model) ? model.GetString() : null,
+            finish_reason = root.TryGetProperty("finish_reason", out var fr) ? fr.GetString() : null,
+            usage = root.TryGetProperty("usage", out var usage) ? usage : (JsonElement?)null,
+            message = new { role = "assistant", content = new[] { new { type = "text", text = "..." } } }
         };
     }
 
@@ -582,29 +598,8 @@ public class LlmThinkTankService
 
     private async Task<string> CallCohere(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
-        var recent = TrimHistory(history);
+        var messages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
         var model = GetModel("cohere", authOverrideJson, defaultModel: "command-r-plus");
-
-        var chatHistory = new List<object>();
-        foreach (var turn in recent)
-        {
-            if (turn.ModelId == providerId)
-                chatHistory.Add(new { role = "assistant", content = turn.Text });
-            else
-                chatHistory.Add(new { role = "user", content = $"[{turn.ModelName}]: {turn.Text}" });
-        }
-
-        var userMessage = recent.Count == 0
-            ? $"The topic is: \"{topic}\". Please give your opening thoughts."
-            : "Please continue the discussion.";
-
-        // Cohere v2 chat endpoint uses OpenAI-compatible format
-        var messages = new List<object>
-        {
-            new { role = "system", content = $"{personalityMarkdown}\n\nTopic: \"{topic}\"" }
-        };
-        messages.AddRange(chatHistory);
-        messages.Add(new { role = "user", content = userMessage });
 
         var payload = new
         {

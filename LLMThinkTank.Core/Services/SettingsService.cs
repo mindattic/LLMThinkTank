@@ -179,9 +179,33 @@ public class LlmThinkTankSettingsService
                 }
             }
 
-            foreach (var providerId in new[] { "openai", "claude", "gemini", "deepseek", "mistral", "xai", "groq", "together", "openrouter", "fireworks", "cohere", "ai21" })
+            // Seed missing ProviderAuth entries for new providers
+            var defaultAuths = new Dictionary<string, string>
             {
-                if (!ProviderAuth.TryGetValue(providerId, out var cfg)) continue;
+                ["openai"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}",
+                ["claude"] = "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"maxTokens\": 2048\n}",
+                ["gemini"] = "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\",\n  \"maxTokens\": 2048\n}",
+                ["deepseek"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}",
+                ["mistral"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-large-latest\",\n  \"maxTokens\": 2048\n}",
+                ["xai"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-latest\",\n  \"maxTokens\": 2048\n}",
+                ["groq"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"llama-4-scout-17b-16e-instruct\",\n  \"maxTokens\": 2048\n}",
+                ["together"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/Llama-4-Scout-17B-16E-Instruct\",\n  \"maxTokens\": 2048\n}",
+                ["openrouter"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"openai/gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}",
+                ["fireworks"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}",
+                ["cohere"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus\",\n  \"maxTokens\": 2048\n}",
+                ["ai21"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}"
+            };
+
+            foreach (var (providerId, defaultJson) in defaultAuths)
+            {
+                if (!ProviderAuth.ContainsKey(providerId))
+                {
+                    ProviderAuth[providerId] = new ProviderAuthConfig(providerId, defaultJson);
+                    changed = true;
+                    continue;
+                }
+
+                var cfg = ProviderAuth[providerId];
                 try
                 {
                     using var doc = System.Text.Json.JsonDocument.Parse(cfg.Json);
