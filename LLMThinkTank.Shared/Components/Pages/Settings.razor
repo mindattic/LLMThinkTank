@@ -55,13 +55,22 @@
                     </div>
 
                     <div class="templates-right settings-form">
-                        <label>Auth config (JSON)</label>
+                        <label>API Key</label>
                         @{ var apiKeyUrl = ThinkTank.Models.FirstOrDefault(m => m.Id == _activeProviderId)?.ApiKeyUrl; }
+                        <div class="api-key-row">
+                            <input type="@(_showApiKey ? "text" : "password")"
+                                   class="api-key-input"
+                                   value="@_currentApiKey"
+                                   @oninput="OnApiKeyChanged"
+                                   placeholder="Enter your API key..." />
+                            <button type="button" class="api-key-toggle" @onclick="(() => _showApiKey = !_showApiKey)" title="@(_showApiKey ? "Hide" : "Show")">
+                                @(_showApiKey ? "🙈" : "👁")
+                            </button>
+                        </div>
                         @if (!string.IsNullOrWhiteSpace(apiKeyUrl))
                         {
                             <a href="@apiKeyUrl" target="_blank" rel="noopener noreferrer" class="api-key-link">Get API key →</a>
                         }
-                        <textarea class="settings-textarea" @bind="ProviderAuthJson" @bind:event="oninput" rows="12" placeholder="Enter your API key here..."></textarea>
 
                         <label>Known models</label>
                         <div class="model-chip-row">
@@ -70,6 +79,11 @@
                                 <button type="button" class="model-chip" @onclick="(() => SetProviderModel(m))">@m</button>
                             }
                         </div>
+
+                        <details class="auth-json-details">
+                            <summary>Advanced (JSON)</summary>
+                            <textarea class="settings-textarea" @bind="ProviderAuthJson" @bind:event="oninput" rows="8" placeholder="Auth config JSON..."></textarea>
+                        </details>
 
                         <div class="settings-row">
                             <button class="start-btn" @onclick="SaveProviderAuth">Save</button>
@@ -167,6 +181,8 @@
     private bool _showAddDropdown;
     private string _activeProviderId = "openai";
     private string _providerAuthJson = "";
+    private string _currentApiKey = "";
+    private bool _showApiKey;
     private string ProviderAuthJson
     {
         get => _providerAuthJson;
@@ -233,6 +249,7 @@
             _activeProviderId = "openai";
 
         _providerAuthJson = ThinkTankSettings.GetAuthJson(_activeProviderId);
+        _currentApiKey = ExtractApiKey(_providerAuthJson);
 
         foreach (var p in _providerOptions)
             _providerStatus[p.Id] = new ProviderStatus(ProviderOnlineState.Unknown);
@@ -330,11 +347,32 @@
             }
             : "Unknown";
 
+    private static string ExtractApiKey(string authJson)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(authJson);
+            if (doc.RootElement.TryGetProperty("apiKey", out var k))
+                return k.GetString() ?? "";
+        }
+        catch { }
+        return "";
+    }
+
+    private void OnApiKeyChanged(ChangeEventArgs e)
+    {
+        _currentApiKey = e.Value?.ToString() ?? "";
+        ThinkTankSettings.SetKey(_activeProviderId, _currentApiKey);
+        _providerAuthJson = ThinkTankSettings.GetAuthJson(_activeProviderId);
+    }
+
     private void SelectProvider(string providerId)
     {
         SaveActiveTemplate();
         _activeProviderId = providerId;
         _providerAuthJson = ThinkTankSettings.GetAuthJson(providerId);
+        _currentApiKey = ExtractApiKey(_providerAuthJson);
+        _showApiKey = false;
         _lastError = null;
 
         _ = CheckProviderOnlineAsync(_activeProviderId, _providerAuthJson);

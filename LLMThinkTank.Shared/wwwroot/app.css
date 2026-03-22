@@ -1725,6 +1725,38 @@ a.settings-tab.active {
 
 .settings-textarea:focus { outline: none; border-color: var(--gemini); }
 
+.api-key-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+.api-key-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.api-key-input:focus { outline: none; border-color: var(--gemini); }
+.api-key-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0;
+}
+.api-key-toggle:hover { border-color: var(--gemini); }
 .api-key-link {
     display: inline-block;
     margin-bottom: 0.5rem;
@@ -1733,6 +1765,14 @@ a.settings-tab.active {
     text-decoration: none;
 }
 .api-key-link:hover { text-decoration: underline; }
+.auth-json-details { margin-top: 0.5rem; }
+.auth-json-details summary {
+    cursor: pointer;
+    color: var(--text-muted, #888);
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+.auth-json-details summary:hover { color: var(--text); }
 
 .settings-range {
     width: 100%;
