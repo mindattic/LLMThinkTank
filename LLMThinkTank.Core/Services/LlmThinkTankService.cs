@@ -5,17 +5,41 @@ using LLMThinkTank.Core.Models;
 
 namespace LLMThinkTank.Core.Services;
 
+/// <summary>
+/// Core orchestration service that dispatches chat completions to 12+ LLM providers.
+/// Acts as a unified API gateway, translating a common conversation format into each
+/// provider's native request schema (OpenAI, Anthropic Messages, Gemini GenerateContent,
+/// Cohere Chat v2, AI21 Completions, and the OpenAI-compatible family).
+/// <para>
+/// <b>Architecture:</b> Each provider call follows the same pipeline:
+/// <list type="number">
+///   <item>Build provider-specific message payload from shared conversation history</item>
+///   <item>Resolve API key, model, and max tokens from settings (with per-participant overrides)</item>
+///   <item>Execute the HTTP request and emit diagnostics (redacted for security)</item>
+///   <item>Parse the response and sanitize output (strip self-referencing prefixes)</item>
+/// </list>
+/// </para>
+/// </summary>
 public class LlmThinkTankService
 {
     private readonly HttpClient _http;
     private readonly LlmThinkTankSettingsService _settings;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LlmThinkTankService"/> class.
+    /// </summary>
+    /// <param name="http">Shared HTTP client for all outbound API requests.</param>
+    /// <param name="settings">Settings service providing API keys, model selections, and token limits.</param>
     public LlmThinkTankService(HttpClient http, LlmThinkTankSettingsService settings)
     {
         _http = http;
         _settings = settings;
     }
 
+    /// <summary>
+    /// Registry of all supported LLM providers with their default identities,
+    /// avatars, personality prompts, and API key registration URLs.
+    /// </summary>
     public List<LlmModel> Models { get; } = new()
     {
         // ── OpenAI ──
@@ -130,9 +154,28 @@ public class LlmThinkTankService
 
     // ── Main dispatch ────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Sends a chat completion request to the specified model using its default personality and auth.
+    /// </summary>
+    /// <param name="model">The LLM model definition to call.</param>
+    /// <param name="topic">The discussion topic injected into the system prompt.</param>
+    /// <param name="history">Shared conversation history visible to all participants.</param>
+    /// <returns>The model's sanitized response text.</returns>
     public Task<string> CallModel(LlmModel model, string topic, List<SharedTurn> history)
         => CallProvider(model.Id, model.Personality, authOverrideJson: null, topic, history);
 
+    /// <summary>
+    /// Dispatches a chat completion request to any supported provider by ID.
+    /// Routes to the appropriate provider-specific method based on <paramref name="providerId"/>.
+    /// </summary>
+    /// <param name="providerId">Provider identifier (e.g., "openai", "claude", "gemini").</param>
+    /// <param name="personalityMarkdown">System prompt defining the AI's persona for this call.</param>
+    /// <param name="authOverrideJson">Optional JSON blob overriding default API key/model/maxTokens.</param>
+    /// <param name="topic">The discussion topic injected into the system prompt.</param>
+    /// <param name="history">Shared conversation history visible to all participants.</param>
+    /// <returns>The model's sanitized response text.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="providerId"/> is not recognized.</exception>
+    /// <exception cref="Exception">Thrown when the provider API returns a non-success status code.</exception>
     public Task<string> CallProvider(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
         => providerId switch
         {
@@ -151,14 +194,26 @@ public class LlmThinkTankService
             _            => throw new ArgumentException($"Unknown provider: {providerId}")
         };
 
+    /// <summary>
+    /// Raised after every API call with the provider ID, redacted response body, and error flag.
+    /// Subscribers (e.g., the diagnostics panel) use this for real-time API monitoring.
+    /// </summary>
     public event Action<string, string, bool>? Diagnostics;
 
+    /// <summary>
+    /// Safely invokes the <see cref="Diagnostics"/> event with a redacted version of the raw API response.
+    /// Swallows subscriber exceptions to prevent diagnostic failures from breaking the call pipeline.
+    /// </summary>
     private void EmitDiagnostics(string providerId, string raw, bool isError)
     {
         try { Diagnostics?.Invoke(providerId, RedactResponseText(providerId, raw), isError); }
         catch { }
     }
 
+    /// <summary>
+    /// Strips actual response content from API JSON, preserving only metadata (model, usage, finish reason).
+    /// This prevents sensitive or lengthy content from appearing in diagnostic logs.
+    /// </summary>
     private static string RedactResponseText(string providerId, string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
@@ -274,6 +329,10 @@ public class LlmThinkTankService
         };
     }
 
+    /// <summary>
+    /// Resolves the API key for a provider, checking the per-participant auth override first,
+    /// then falling back to the global provider auth in settings.
+    /// </summary>
     private string GetApiKey(string providerId, string? authOverrideJson)
     {
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
@@ -290,6 +349,9 @@ public class LlmThinkTankService
         return _settings.GetKeyForProvider(providerId, null);
     }
 
+    /// <summary>
+    /// Resolves the model ID for a provider. Priority: auth override JSON > global settings > default.
+    /// </summary>
     private string GetModel(string providerId, string? authOverrideJson, string defaultModel)
     {
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
@@ -322,6 +384,9 @@ public class LlmThinkTankService
         return defaultModel;
     }
 
+    /// <summary>
+    /// Resolves the max output tokens for a provider. Priority: auth override JSON > global settings > default (2048).
+    /// </summary>
     private int GetMaxTokens(string providerId, string? authOverrideJson, int defaultMaxTokens = 2048)
     {
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
@@ -348,8 +413,13 @@ public class LlmThinkTankService
 
     // ── Shared history builder ───────────────────────────────────────────────
 
+    /// <summary>Maximum number of recent turns included in the context window to manage token usage.</summary>
     private const int MaxContextTurns = 8;
 
+    /// <summary>
+    /// Returns the most recent <see cref="MaxContextTurns"/> turns from conversation history,
+    /// keeping context windows manageable across all providers.
+    /// </summary>
     private static List<SharedTurn> TrimHistory(List<SharedTurn> history)
     {
         if (history.Count <= MaxContextTurns)
@@ -357,6 +427,12 @@ public class LlmThinkTankService
         return history.Skip(history.Count - MaxContextTurns).ToList();
     }
 
+    /// <summary>
+    /// Converts shared conversation history into the OpenAI-style messages array format.
+    /// The calling model's own prior turns become "assistant" messages; all other participants'
+    /// turns become "user" messages prefixed with the speaker name (e.g., "[Claude]: ...").
+    /// If history is empty, generates an opening prompt asking the model for initial thoughts.
+    /// </summary>
     private static List<object> BuildOpenAiStyleMessages(string providerId, string personalityMarkdown, string topic, List<SharedTurn> history)
     {
         var recent = TrimHistory(history);
@@ -388,6 +464,10 @@ public class LlmThinkTankService
 
     // ── OpenAI ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Calls the OpenAI Chat Completions API (<c>POST /v1/chat/completions</c>).
+    /// Uses Bearer token authentication and the standard OpenAI message format.
+    /// </summary>
     private async Task<string> CallOpenAI(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         var messages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
@@ -423,6 +503,11 @@ public class LlmThinkTankService
 
     // ── Claude ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Calls the Anthropic Messages API (<c>POST /v1/messages</c>).
+    /// Converts OpenAI-style messages to Anthropic's format: system prompt as a top-level field,
+    /// and only user/assistant role messages in the messages array. Uses <c>x-api-key</c> header auth.
+    /// </summary>
     private async Task<string> CallClaude(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         var openAiMessages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
@@ -470,6 +555,12 @@ public class LlmThinkTankService
 
     // ── Gemini ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Calls the Google Gemini GenerateContent API.
+    /// Handles Gemini's unique constraints: no consecutive same-role turns (merged automatically),
+    /// first turn must be "user" role, and multi-part responses are concatenated into a single string.
+    /// API key is passed as a query parameter rather than a header.
+    /// </summary>
     private async Task<string> CallGemini(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         var recent = TrimHistory(history);
@@ -559,6 +650,11 @@ public class LlmThinkTankService
 
     // ── OpenAI-Compatible (DeepSeek, Mistral, xAI/Grok, Groq, Together, OpenRouter, Fireworks) ──
 
+    /// <summary>
+    /// Generic handler for providers that implement the OpenAI Chat Completions API contract.
+    /// Supports DeepSeek, Mistral, xAI/Grok, Groq, Together AI, OpenRouter, and Fireworks AI.
+    /// Each provider differs only in endpoint URL and default model; the request/response format is identical.
+    /// </summary>
     private async Task<string> CallOpenAiCompatible(
         string providerId, string displayName, string endpoint, string defaultModel,
         string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
@@ -596,6 +692,11 @@ public class LlmThinkTankService
 
     // ── Cohere ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Calls the Cohere Chat v2 API (<c>POST /v2/chat</c>).
+    /// Uses OpenAI-style message format but parses the Cohere-specific response structure
+    /// where content is nested under <c>message.content[0].text</c>.
+    /// </summary>
     private async Task<string> CallCohere(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         var messages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
@@ -631,6 +732,10 @@ public class LlmThinkTankService
 
     // ── AI21 Labs ────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Calls the AI21 Labs Chat Completions API (<c>POST /studio/v1/chat/completions</c>).
+    /// AI21's Jamba model uses OpenAI-compatible request/response format with Bearer auth.
+    /// </summary>
     private async Task<string> CallAI21(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         // AI21 Jamba uses OpenAI-compatible chat completions
@@ -667,6 +772,11 @@ public class LlmThinkTankService
 
     // ── Sanitization ─────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Strips self-referencing prefixes that models sometimes prepend to their responses
+    /// (e.g., "[ChatGPT]:", "Claude:", "[Assistant]:"). This keeps the displayed output
+    /// clean since participant identity is already shown in the chat bubble header.
+    /// </summary>
     private static string SanitizeModelOutput(string providerId, string text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -682,6 +792,10 @@ public class LlmThinkTankService
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Attempts to extract a human-readable error message from a provider's JSON error response.
+    /// Falls back to the raw JSON (truncated to 200 chars) if parsing fails.
+    /// </summary>
     private static string ExtractError(string json)
     {
         try

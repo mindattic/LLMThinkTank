@@ -3,16 +3,30 @@ using LLMThinkTank.Core.Models;
 
 namespace LLMThinkTank.Core.Services;
 
+/// <summary>
+/// Manages the lifecycle of conversation tabs: creation, activation, closure, and persistence.
+/// Serves as the single source of truth for all open conversations and the currently active tab.
+/// On construction, rehydrates persisted conversations from <see cref="LlmThinkTankSettingsService"/>.
+/// Every state change is immediately persisted and broadcasts a <see cref="Changed"/> event
+/// for UI components to re-render.
+/// </summary>
 public class ChatConversationsService
 {
     private readonly LlmThinkTankSettingsService _settings;
 
+    /// <summary>Observable collection of all open conversation tabs, bound to the tab bar UI.</summary>
     public ObservableCollection<ChatConversation> Conversations { get; } = new();
 
+    /// <summary>The currently selected conversation tab, or <c>null</c> if no conversations exist.</summary>
     public ChatConversation? ActiveConversation { get; private set; }
 
+    /// <summary>Raised whenever conversations are created, closed, reordered, or messages are added.</summary>
     public event Action? Changed;
 
+    /// <summary>
+    /// Initializes the service by rehydrating all persisted conversations from settings.
+    /// Sets the last conversation as the active tab.
+    /// </summary>
     public ChatConversationsService(LlmThinkTankSettingsService settings)
     {
         _settings = settings;
@@ -51,8 +65,13 @@ public class ChatConversationsService
         }
     }
 
+    /// <summary>Generates a new unique identifier as a 32-character hex GUID string.</summary>
     public static string NewId() => Guid.NewGuid().ToString("N");
 
+    /// <summary>
+    /// Switches the active conversation tab and persists the change.
+    /// </summary>
+    /// <param name="chatId">The conversation ID to activate.</param>
     public void SetActive(string chatId)
     {
         ActiveConversation = Conversations.FirstOrDefault(c => c.ChatId == chatId);
@@ -60,6 +79,12 @@ public class ChatConversationsService
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Creates a new conversation tab with the given title, adds it to the collection,
+    /// sets it as active, and persists the updated state.
+    /// </summary>
+    /// <param name="title">Display title for the new conversation tab.</param>
+    /// <returns>The newly created conversation instance.</returns>
     public ChatConversation CreateConversation(string title)
     {
         var chatId = NewId();
@@ -71,6 +96,11 @@ public class ChatConversationsService
         return convo;
     }
 
+    /// <summary>
+    /// Removes a conversation tab from the collection. If the closed tab was active,
+    /// activates the last remaining conversation (or sets active to <c>null</c>).
+    /// </summary>
+    /// <param name="chatId">The conversation ID to close and remove.</param>
     public void CloseConversation(string chatId)
     {
         var convo = Conversations.FirstOrDefault(c => c.ChatId == chatId);
@@ -84,12 +114,20 @@ public class ChatConversationsService
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Persists current state and notifies subscribers. Call after modifying conversation
+    /// content (e.g., adding messages, changing participants) outside of this service.
+    /// </summary>
     public void NotifyChanged()
     {
         Persist();
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Serializes all conversations (participants, messages, diagnostics) into
+    /// <see cref="PersistedConversation"/> records and writes to the settings service.
+    /// </summary>
     private void Persist()
     {
         if (_settings is not SettingsService s)

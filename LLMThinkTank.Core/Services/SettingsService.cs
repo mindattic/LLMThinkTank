@@ -2,25 +2,56 @@ using LLMThinkTank.Core.Models;
 
 namespace LLMThinkTank.Core.Services;
 
+/// <summary>
+/// Concrete settings service registered in the DI container for production use.
+/// Inherits all persistence and configuration logic from <see cref="LlmThinkTankSettingsService"/>.
+/// </summary>
 public class SettingsService : LlmThinkTankSettingsService
 {
 }
 
+/// <summary>
+/// Manages all persistent application state: provider authentication credentials, participant
+/// templates, conversation history, and appearance settings. Data is stored as a single
+/// <c>Settings.json</c> file in the user's <c>LocalApplicationData/MindAttic/LLMThinkTank</c> folder.
+/// <para>
+/// <b>Initialization:</b> On first launch, seeds default auth configs for all 12 providers and
+/// creates default personality templates. On subsequent launches, loads existing settings and
+/// backfills any new providers added since the last update.
+/// </para>
+/// <para>
+/// <b>Persistence:</b> Every mutation method (SetAuthJson, SetAppearanceTheme, SaveTemplates, etc.)
+/// immediately writes the full state to disk, ensuring crash-safe persistence.
+/// </para>
+/// </summary>
 public class LlmThinkTankSettingsService
 {
+    /// <summary>Per-provider authentication and model configuration, keyed by provider ID.</summary>
     public Dictionary<string, ProviderAuthConfig> ProviderAuth { get; } = new();
 
+    /// <summary>Reusable participant templates (both built-in defaults and user-created customs).</summary>
     public List<ParticipantTemplate> Templates { get; } = new();
 
+    /// <summary>Persisted conversation snapshots restored on app launch.</summary>
     public List<PersistedConversation> Conversations { get; } = new();
 
     private const string SettingsFileName = "Settings.json";
 
+    /// <summary>Current UI theme name (e.g., "dark", "neon", "dracula").</summary>
     public string? AppearanceTheme { get; private set; } = "dark";
+
+    /// <summary>Height in pixels for UI control elements (buttons, inputs). Range: 28-60.</summary>
     public int? ControlHeight { get; private set; } = 40;
+
+    /// <summary>Gutter spacing in pixels between UI elements. Range: 0-30.</summary>
     public int? Gutter { get; private set; } = 10;
+
+    /// <summary>Border radius in pixels for rounded UI elements. Range: 0-24.</summary>
     public int? BorderRadius { get; private set; } = 10;
 
+    /// <summary>
+    /// Initializes the settings service by loading from disk or creating default configuration.
+    /// </summary>
     public LlmThinkTankSettingsService()
     {
         LoadOrInit();
@@ -35,6 +66,10 @@ public class LlmThinkTankSettingsService
     private static string SettingsPath
         => Path.Combine(SettingsRoot, SettingsFileName);
 
+    /// <summary>
+    /// Loads settings from disk if available, otherwise initializes with defaults for all providers.
+    /// After loading, ensures any newly added providers are backfilled into the configuration.
+    /// </summary>
     private void LoadOrInit()
     {
         if (TryLoad())
@@ -64,6 +99,10 @@ public class LlmThinkTankSettingsService
         Save();
     }
 
+    /// <summary>
+    /// Creates the built-in default participant templates (one per supported provider).
+    /// Each template uses the provider's standard personality prompt and default model.
+    /// </summary>
     private static List<ParticipantTemplate> CreateDefaultTemplates() => new()
     {
         new ParticipantTemplate(
@@ -152,6 +191,11 @@ public class LlmThinkTankSettingsService
             IsDefault: true)
     };
 
+    /// <summary>
+    /// Backfills default templates and provider auth entries for any providers that were
+    /// added to the application after the user's settings file was originally created.
+    /// Also ensures existing providers have the <c>maxTokens</c> field if it was added later.
+    /// </summary>
     private void EnsureDefaultsIfMissing()
     {
         try
@@ -226,6 +270,11 @@ public class LlmThinkTankSettingsService
         catch { }
     }
 
+    /// <summary>
+    /// Creates default personality markdown files on disk for each provider.
+    /// These files serve as user-editable personality templates that can be customized
+    /// without modifying application settings directly.
+    /// </summary>
     private void EnsurePersonalityFiles()
     {
         try
@@ -278,6 +327,10 @@ public class LlmThinkTankSettingsService
         }
     }
 
+    /// <summary>
+    /// Attempts to deserialize Settings.json from disk into the current instance.
+    /// Returns <c>false</c> if the file doesn't exist or deserialization fails.
+    /// </summary>
     private bool TryLoad()
     {
         try
@@ -314,6 +367,10 @@ public class LlmThinkTankSettingsService
         }
     }
 
+    /// <summary>
+    /// Serializes the complete application state to <c>Settings.json</c> on disk.
+    /// Called after every mutation to ensure crash-safe persistence.
+    /// </summary>
     private void Save()
     {
         try
@@ -340,39 +397,50 @@ public class LlmThinkTankSettingsService
         catch { }
     }
 
+    /// <summary>
+    /// Returns the raw authentication JSON for a provider, or <c>"{}"</c> if not configured.
+    /// </summary>
     public string GetAuthJson(string providerId)
         => ProviderAuth.TryGetValue(providerId, out var cfg) ? cfg.Json : "{}";
 
+    /// <summary>
+    /// Updates the authentication JSON for a provider and persists to disk.
+    /// </summary>
     public void SetAuthJson(string providerId, string json)
     {
         ProviderAuth[providerId] = new ProviderAuthConfig(providerId, json);
         Save();
     }
 
+    /// <summary>Sets the active appearance theme and persists to disk. Defaults to "dark" if blank.</summary>
     public void SetAppearanceTheme(string theme)
     {
         AppearanceTheme = string.IsNullOrWhiteSpace(theme) ? "dark" : theme;
         Save();
     }
 
+    /// <summary>Sets the UI control height in pixels and persists to disk.</summary>
     public void SetControlHeight(int height)
     {
         ControlHeight = height;
         Save();
     }
 
+    /// <summary>Sets the gutter spacing in pixels and persists to disk.</summary>
     public void SetGutter(int px)
     {
         Gutter = px;
         Save();
     }
 
+    /// <summary>Sets the border radius in pixels and persists to disk.</summary>
     public void SetBorderRadius(int px)
     {
         BorderRadius = px;
         Save();
     }
 
+    /// <summary>Replaces all persisted conversations and writes to disk.</summary>
     public void SetConversations(IEnumerable<PersistedConversation> convos)
     {
         Conversations.Clear();
@@ -380,6 +448,7 @@ public class LlmThinkTankSettingsService
         Save();
     }
 
+    /// <summary>Replaces all participant templates and writes to disk.</summary>
     public void SaveTemplates(IEnumerable<ParticipantTemplate> templates)
     {
         Templates.Clear();
@@ -387,6 +456,10 @@ public class LlmThinkTankSettingsService
         Save();
     }
 
+    /// <summary>
+    /// Resolves the API key for a provider. Returns the override if provided,
+    /// otherwise extracts the <c>apiKey</c> field from the provider's auth JSON.
+    /// </summary>
     public string GetKeyForProvider(string providerId, string? apiKeyOverride)
     {
         if (!string.IsNullOrWhiteSpace(apiKeyOverride))
@@ -403,6 +476,9 @@ public class LlmThinkTankSettingsService
         return "";
     }
 
+    /// <summary>
+    /// Updates just the API key for a provider while preserving its existing type, model, and maxTokens settings.
+    /// </summary>
     public void SetKey(string providerId, string apiKey)
     {
         try
@@ -426,6 +502,7 @@ public class LlmThinkTankSettingsService
         }
     }
 
+    /// <summary>Internal DTO that mirrors the on-disk Settings.json structure for serialization.</summary>
     private sealed class PersistedSettings
     {
         public Dictionary<string, string?> ProviderAuth { get; set; } = new();
