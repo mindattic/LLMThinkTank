@@ -83,13 +83,13 @@ public class LlmThinkTankSettingsService
         ProviderAuth["claude"] = new ProviderAuthConfig("claude", "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["gemini"] = new ProviderAuthConfig("gemini", "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["deepseek"] = new ProviderAuthConfig("deepseek", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["mistral"] = new ProviderAuthConfig("mistral", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-large-latest\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["xai"] = new ProviderAuthConfig("xai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-latest\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["mistral"] = new ProviderAuthConfig("mistral", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-small-latest\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["xai"] = new ProviderAuthConfig("xai", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-mini-fast\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["groq"] = new ProviderAuthConfig("groq", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"llama-4-scout-17b-16e-instruct\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["together"] = new ProviderAuthConfig("together", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/Llama-4-Scout-17B-16E-Instruct\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["openrouter"] = new ProviderAuthConfig("openrouter", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"openai/gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["openrouter"] = new ProviderAuthConfig("openrouter", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["fireworks"] = new ProviderAuthConfig("fireworks", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["cohere"] = new ProviderAuthConfig("cohere", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus\",\n  \"maxTokens\": 2048\n}");
+        ProviderAuth["cohere"] = new ProviderAuthConfig("cohere", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus-08-2024\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["ai21"] = new ProviderAuthConfig("ai21", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}");
 
         Templates.AddRange(CreateDefaultTemplates());
@@ -230,13 +230,13 @@ public class LlmThinkTankSettingsService
                 ["claude"] = "{\n  \"type\": \"anthropic\",\n  \"apiKey\": \"\",\n  \"model\": \"claude-sonnet-4-6\",\n  \"maxTokens\": 2048\n}",
                 ["gemini"] = "{\n  \"type\": \"google\",\n  \"apiKey\": \"\",\n  \"model\": \"gemini-2.5-flash\",\n  \"maxTokens\": 2048\n}",
                 ["deepseek"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"deepseek-chat\",\n  \"maxTokens\": 2048\n}",
-                ["mistral"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-large-latest\",\n  \"maxTokens\": 2048\n}",
-                ["xai"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-latest\",\n  \"maxTokens\": 2048\n}",
+                ["mistral"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"mistral-small-latest\",\n  \"maxTokens\": 2048\n}",
+                ["xai"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"grok-3-mini-fast\",\n  \"maxTokens\": 2048\n}",
                 ["groq"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"llama-4-scout-17b-16e-instruct\",\n  \"maxTokens\": 2048\n}",
                 ["together"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/Llama-4-Scout-17B-16E-Instruct\",\n  \"maxTokens\": 2048\n}",
-                ["openrouter"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"openai/gpt-4.1-mini\",\n  \"maxTokens\": 2048\n}",
+                ["openrouter"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"maxTokens\": 2048\n}",
                 ["fireworks"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}",
-                ["cohere"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus\",\n  \"maxTokens\": 2048\n}",
+                ["cohere"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus-08-2024\",\n  \"maxTokens\": 2048\n}",
                 ["ai21"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}"
             };
 
