@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ZiD8GnEbAI0=",
+  "dgSpecHash": "4fsbZLdqKzM=",
   "success": true,
-  "projectFilePath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
+  "projectFilePath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ryand\\.nuget\\packages\\microsoft.applicationinsights\\2.22.0\\microsoft.applicationinsights.2.22.0.nupkg.sha512",
     "C:\\Users\\ryand\\.nuget\\packages\\microsoft.codecoverage\\17.14.0\\microsoft.codecoverage.17.14.0.nupkg.sha512",

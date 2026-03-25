@@ -1,22 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj": {}
+    "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj": {}
   },
   "projects": {
-    "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj": {
+    "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj",
+        "projectUniqueName": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj",
         "projectName": "LLMThinkTank.Core",
-        "projectPath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj",
+        "projectPath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj",
         "packagesPath": "C:\\Users\\ryand\\.nuget\\packages\\",
-        "outputPath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\obj\\",
+        "outputPath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
+          "D:\\Projects\\MindAttic\\NuGet.Config",
           "C:\\Users\\ryand\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
@@ -25,12 +26,14 @@
           "net10.0"
         ],
         "sources": {
+          "C:\\LocalNuGet": {},
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {}
           }
@@ -49,6 +52,7 @@
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "imports": [
             "net461",
@@ -66,7 +70,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.200-preview.0.26103.119/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -344,19 +348,20 @@
         }
       }
     },
-    "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj": {
+    "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
+        "projectUniqueName": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
         "projectName": "LLMThinkTank.UnitTests",
-        "projectPath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
+        "projectPath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\LLMThinkTank.UnitTests.csproj",
         "packagesPath": "C:\\Users\\ryand\\.nuget\\packages\\",
-        "outputPath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.UnitTests\\obj\\",
+        "outputPath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.UnitTests\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
+          "D:\\Projects\\MindAttic\\NuGet.Config",
           "C:\\Users\\ryand\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
@@ -365,16 +370,18 @@
           "net10.0"
         ],
         "sources": {
+          "C:\\LocalNuGet": {},
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net10.0": {
+            "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj": {
-                "projectPath": "D:\\Projects\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj"
+              "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj": {
+                "projectPath": "D:\\Projects\\MindAttic\\LLMThinkTank\\LLMThinkTank.Core\\LLMThinkTank.Core.csproj"
               }
             }
           }
@@ -393,6 +400,7 @@
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
             "Microsoft.NET.Test.Sdk": {
@@ -424,7 +432,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.200-preview.0.26103.119/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",
