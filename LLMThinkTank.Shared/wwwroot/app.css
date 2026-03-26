@@ -766,7 +766,8 @@ html, body {
     height: calc(100vh - 3.75rem);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .conversation-wrap {
@@ -1251,7 +1252,7 @@ html, body {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .conversation-grid {
