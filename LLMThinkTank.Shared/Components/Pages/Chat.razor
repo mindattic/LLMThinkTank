@@ -10,11 +10,6 @@
 
 <div class="thinktank-container">
 
-    <header class="thinktank-header">
-        <h1>LLM <span class="accent">Think Tank</span></h1>
-        <p class="subtitle">Siloed conversations per tab. Humans only choose the prompt and the participants.</p>
-    </header>
-
     <div class="chat-tabs">
         @foreach (var c in Conversations.Conversations)
         {
@@ -152,7 +147,36 @@
                                     </div>
                                 }
                             </div>
+                            <div class="member-list-add">
+                                <button class="member-add-btn" @onclick="ToggleMidConvoAdd">+ Add</button>
+                                @if (_showMidConvoAdd)
+                                {
+                                    <div class="context-menu-overlay" @onclick="(() => _showMidConvoAdd = false)"></div>
+                                    <div class="member-add-dropdown">
+                                        @foreach (var t in Settings.Templates.Where(t => !Active.Participants.Any(p => p.TemplateId == t.TemplateId)))
+                                        {
+                                            <button class="context-menu-item" @onclick="(() => AddParticipantMidConvo(t))">
+                                                <span>@GetProviderAvatar(t.ProviderId)</span> @t.DisplayName
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </aside>
+                        <div class="options-pane">
+                            <div class="member-list-header">Options</div>
+                            <div class="options-pane-body">
+                                <label class="options-label">Max Tokens</label>
+                                <input type="number" class="options-input" min="64" max="32768" step="64"
+                                       value="@(Active.MaxTokens ?? Settings.GlobalMaxTokens ?? 2048)"
+                                       @onchange="OnMaxTokensChanged" />
+                                <label class="options-label" style="margin-top:0.5rem">Max Rounds</label>
+                                <input type="number" class="options-input" min="1" max="999" step="1"
+                                       value="@(Active.MaxRounds ?? Settings.GlobalMaxRounds ?? 10)"
+                                       @onchange="OnMaxRoundsChanged" />
+                                <div class="options-hint">Global defaults: @(Settings.GlobalMaxTokens ?? 2048) tokens, @(Settings.GlobalMaxRounds ?? 10) rounds</div>
+                            </div>
+                        </div>
                         @if (!_followConversation)
                         {
                             <a class="jump-to-bottom" href="#" @onclick:preventDefault @onclick="JumpToBottom">Jump to Bottom</a>
@@ -162,13 +186,14 @@
                     <div class="chat-column">
                         <div class="chat-header">
                             <div class="topic-title">@Active.Topic</div>
+                            <button class="start-btn" @onclick="ExportTranscript">Export</button>
                             @if (ActiveState.Running)
                             {
-                                <button class="start-btn" @onclick="ToggleRun">Stop</button>
+                                <button class="start-btn" @onclick="ToggleRun">Pause</button>
                             }
                             else
                             {
-                                <button class="start-btn" @onclick="ToggleRun">Start</button>
+                                <button class="start-btn" @onclick="ToggleRun">Resume</button>
                             }
                         </div>
 
@@ -189,7 +214,7 @@
                                             <span class="bubble-name">@(msg.ParticipantId == "user" ? "You" : (p?.DisplayName ?? msg.ParticipantId))</span>
                                             <span class="bubble-round">Round @msg.Round</span>
                                         </div>
-                                        <div class="bubble-text">@msg.Text</div>
+                                        <div class="bubble-text">@((MarkupString)FormatMessageText(msg.Text))</div>
                                     </div>
                                 }
 
@@ -219,20 +244,25 @@
                 @if (!ActiveState.Running && ActiveState.Messages.Count > 0)
                 {
                     <div class="done-bar">
-                        <span>Conversation complete — @ActiveState.Messages.Count messages exchanged.</span>
+                        <span>Conversation paused — @ActiveState.Messages.Count messages exchanged.</span>
                     </div>
                 }
             </div>
 
-            <div class="status-log">
-            <div class="status-log-header">
-                <span>Status log</span>
-                <span class="status-log-tabs">
-                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Perspective ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Perspective)">Perspective</button>
-                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Context ? "active" : "")" @onclick="(() => { _activeStatusTab = StatusTab.Context; _ = RefreshContextFiles(); })">Context</button>
-                    <button class="status-log-tab @(_activeStatusTab == StatusTab.Diagnostics ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Diagnostics)">Diagnostics</button>
-                </span>
+            <div class="status-log @(_statusLogExpanded ? "" : "collapsed")">
+            <div class="status-log-header" @onclick="(() => _statusLogExpanded = !_statusLogExpanded)">
+                <span class="status-log-toggle">@(_statusLogExpanded ? "▾" : "▸") Status log</span>
+                @if (_statusLogExpanded)
+                {
+                    <span class="status-log-tabs" @onclick:stopPropagation>
+                        <button class="status-log-tab @(_activeStatusTab == StatusTab.Perspective ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Perspective)">Perspective</button>
+                        <button class="status-log-tab @(_activeStatusTab == StatusTab.Context ? "active" : "")" @onclick="(() => { _activeStatusTab = StatusTab.Context; _ = RefreshContextFiles(); })">Context</button>
+                        <button class="status-log-tab @(_activeStatusTab == StatusTab.Diagnostics ? "active" : "")" @onclick="(() => _activeStatusTab = StatusTab.Diagnostics)">Diagnostics</button>
+                    </span>
+                }
             </div>
+            @if (_statusLogExpanded)
+            {
             <div class="status-log-items">
                 @if (_activeStatusTab == StatusTab.Perspective)
                 {
@@ -286,6 +316,7 @@
                     }
                 }
             </div>
+            }
         </div>
     }
     }
@@ -294,6 +325,7 @@
 @code {
     private enum StatusTab { Perspective, Context, Diagnostics }
     private StatusTab _activeStatusTab = StatusTab.Perspective;
+    private bool _statusLogExpanded;
     private Dictionary<string, string> _contextFiles = new();
     private ChatConversation? Active => Conversations.ActiveConversation;
     private ConversationUiState ActiveState => GetState(Active);
@@ -510,11 +542,29 @@
 
         state.Running = true;
         state.StopRequested = false;
-        state.Messages.Clear();
-        state.CompletedTurns = 0;
-        state.TotalTurns = 0;
 
+        // Build shared history from existing messages (supports resume)
         var sharedHistory = new List<SharedTurn>();
+        var isResume = state.Messages.Count > 0;
+        if (!isResume)
+        {
+            state.CompletedTurns = 0;
+            state.TotalTurns = 0;
+        }
+        else
+        {
+            foreach (var m in state.Messages)
+            {
+                sharedHistory.Add(new SharedTurn
+                {
+                    ModelId = m.ParticipantId,
+                    ModelName = m.ParticipantId == "user" ? "User" : (Active.Participants.FirstOrDefault(p => p.ParticipantId == m.ParticipantId)?.DisplayName ?? m.ParticipantId),
+                    Text = m.Text,
+                    Round = m.Round
+                });
+            }
+        }
+
         if (_pendingUserTurns.Count > 0)
         {
             sharedHistory.AddRange(_pendingUserTurns);
@@ -523,14 +573,20 @@
         Conversations.NotifyChanged();
         await ChatStorage.AppendChatJsonAsync(Active.ChatId, new { type = "chat-start", chatId = Active.ChatId, topic = Active.Topic, ts = DateTimeOffset.UtcNow });
 
-        var round = 0;
-        var titleGenerated = false;
+        var round = isResume ? state.Messages.Max(m => m.Round) : 0;
+        var titleGenerated = isResume;
+        var maxRounds = Active.MaxRounds ?? Settings.GlobalMaxRounds ?? 10;
         while (!state.StopRequested)
         {
             while (_userChatFocused && !state.StopRequested)
                 await Task.Delay(50);
 
             round++;
+            if (round > maxRounds)
+            {
+                state.StopRequested = true;
+                break;
+            }
             foreach (var p in Active.Participants)
             {
                 if (state.StopRequested)
@@ -551,7 +607,22 @@
                         _pendingUserTurns.Clear();
                     }
 
-                    var response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, Active.Topic!, sharedHistory);
+                    var response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, Active.Topic!, sharedHistory, Active.MaxTokens);
+
+                    // If the user injected a message while the API call was in-flight,
+                    // discard the stale response and re-call so the participant can pivot.
+                    if (_pendingUserTurns.Count > 0)
+                    {
+                        sharedHistory.AddRange(_pendingUserTurns);
+                        _pendingUserTurns.Clear();
+
+                        // Wait for user to finish typing if still focused
+                        while (_userChatFocused && !state.StopRequested)
+                            await Task.Delay(50);
+
+                        if (!state.StopRequested)
+                            response = await ThinkTankService.CallProvider(p.ProviderId, p.PersonalityMarkdown, p.AuthOverrideJson, Active.Topic!, sharedHistory, Active.MaxTokens);
+                    }
 
                     sharedHistory.Add(new SharedTurn
                     {
@@ -923,4 +994,207 @@
     }
 
     private record StatusEvent(DateTimeOffset Timestamp, string Text);
+
+    // ── Max tokens ──
+
+    private void OnMaxTokensChanged(ChangeEventArgs e)
+    {
+        if (Active is null) return;
+        if (int.TryParse(e.Value?.ToString(), out var val) && val >= 64 && val <= 32768)
+            Active.MaxTokens = val;
+        Conversations.NotifyChanged();
+    }
+
+    private void OnMaxRoundsChanged(ChangeEventArgs e)
+    {
+        if (Active is null) return;
+        if (int.TryParse(e.Value?.ToString(), out var val) && val >= 1 && val <= 999)
+            Active.MaxRounds = val;
+        Conversations.NotifyChanged();
+    }
+
+    // ── Mid-conversation participant add ──
+
+    private bool _showMidConvoAdd;
+
+    private void ToggleMidConvoAdd() => _showMidConvoAdd = !_showMidConvoAdd;
+
+    private void AddParticipantMidConvo(ParticipantTemplate t)
+    {
+        if (Active is null) return;
+        _showMidConvoAdd = false;
+
+        AddParticipant(Active, t);
+
+        var round = ActiveState.Messages.Count > 0 ? ActiveState.Messages.Max(m => m.Round) : 1;
+        var announcement = new ConversationUiMessage
+        {
+            ParticipantId = "system",
+            Text = $"{t.DisplayName} has entered the chat.",
+            Round = round,
+            IsError = false
+        };
+        ActiveState.Messages.Add(announcement);
+        Active.Messages.Add(new PersistedMessage("system", announcement.Text, round, false));
+        Conversations.NotifyChanged();
+    }
+
+    // ── Export ──
+
+    private async Task ExportTranscript()
+    {
+        if (Active is null) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"# {Active.Title}");
+        sb.AppendLine($"Topic: {Active.Topic}");
+        sb.AppendLine($"Exported: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine();
+
+        foreach (var msg in ActiveState.Messages)
+        {
+            var name = msg.ParticipantId == "user" ? "You"
+                     : msg.ParticipantId == "system" ? "System"
+                     : (Active.Participants.FirstOrDefault(p => p.ParticipantId == msg.ParticipantId)?.DisplayName ?? msg.ParticipantId);
+            sb.AppendLine($"**{name}** (Round {msg.Round}):");
+            sb.AppendLine(msg.Text);
+            sb.AppendLine();
+        }
+
+        var content = sb.ToString();
+        await JS.InvokeVoidAsync("LLMThinkTank.downloadFile", $"{Active.Title}.md", content);
+    }
+
+    // ── Markdown-lite formatting ──
+
+    private static string FormatMessageText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "";
+
+        text = System.Net.WebUtility.HtmlEncode(text);
+        var lines = text.Split('\n');
+        var sb = new System.Text.StringBuilder();
+        var inTable = false;
+        var inList = false;
+        var listTag = "ul";
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.TrimStart();
+
+            // Table rows
+            if (trimmed.StartsWith("|") && trimmed.EndsWith("|"))
+            {
+                // Skip separator rows like |---|---|
+                if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\|[\s\-:|]+\|$"))
+                    continue;
+
+                if (!inTable)
+                {
+                    CloseList(sb, ref inList, listTag);
+                    sb.Append("<table class=\"bubble-table\">");
+                    // Check if next line is a separator -> this is a header row
+                    var isHeader = i + 1 < lines.Length &&
+                        System.Text.RegularExpressions.Regex.IsMatch(lines[i + 1].Trim(), @"^\|[\s\-:|]+\|$");
+                    var cells = ParseTableCells(trimmed);
+                    var tag = isHeader ? "th" : "td";
+                    sb.Append("<tr>");
+                    foreach (var cell in cells)
+                        sb.Append($"<{tag}>{cell.Trim()}</{tag}>");
+                    sb.Append("</tr>");
+                    inTable = true;
+                    continue;
+                }
+
+                var dataCells = ParseTableCells(trimmed);
+                sb.Append("<tr>");
+                foreach (var cell in dataCells)
+                    sb.Append($"<td>{cell.Trim()}</td>");
+                sb.Append("</tr>");
+                continue;
+            }
+
+            if (inTable)
+            {
+                sb.Append("</table>");
+                inTable = false;
+            }
+
+            // Numbered list
+            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\d+[\.\)]\s"))
+            {
+                if (!inList || listTag != "ol")
+                {
+                    CloseList(sb, ref inList, listTag);
+                    listTag = "ol";
+                    sb.Append("<ol>");
+                    inList = true;
+                }
+                var content = System.Text.RegularExpressions.Regex.Replace(trimmed, @"^\d+[\.\)]\s", "");
+                sb.Append($"<li>{FormatInline(content)}</li>");
+                continue;
+            }
+
+            // Bullet list
+            if (trimmed.StartsWith("- ") || trimmed.StartsWith("* ") || trimmed.StartsWith("• "))
+            {
+                if (!inList || listTag != "ul")
+                {
+                    CloseList(sb, ref inList, listTag);
+                    listTag = "ul";
+                    sb.Append("<ul>");
+                    inList = true;
+                }
+                var content = trimmed[2..];
+                sb.Append($"<li>{FormatInline(content)}</li>");
+                continue;
+            }
+
+            CloseList(sb, ref inList, listTag);
+
+            // Empty line = paragraph break
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                sb.Append("<br/>");
+                continue;
+            }
+
+            sb.Append($"{FormatInline(line)}<br/>");
+        }
+
+        if (inTable) sb.Append("</table>");
+        CloseList(sb, ref inList, listTag);
+
+        return sb.ToString();
+    }
+
+    private static string FormatInline(string text)
+    {
+        // Bold: **text** or __text__
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"__(.+?)__", "<strong>$1</strong>");
+        // Italic: *text* or _text_
+        text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", "<em>$1</em>");
+        return text;
+    }
+
+    private static void CloseList(System.Text.StringBuilder sb, ref bool inList, string tag)
+    {
+        if (inList)
+        {
+            sb.Append($"</{tag}>");
+            inList = false;
+        }
+    }
+
+    private static List<string> ParseTableCells(string row)
+    {
+        var cells = row.Split('|', StringSplitOptions.None);
+        // Trim first and last empty entries from leading/trailing pipes
+        if (cells.Length >= 2)
+            cells = cells[1..^1];
+        return cells.ToList();
+    }
 }

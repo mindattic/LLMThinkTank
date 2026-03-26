@@ -60,6 +60,12 @@ public class ChatConversation
     /// <summary>The discussion topic that all participants are prompted to respond to.</summary>
     public string? Topic { get; set; }
 
+    /// <summary>Per-conversation max token limit override. When set, overrides the provider default for all participants.</summary>
+    public int? MaxTokens { get; set; }
+
+    /// <summary>Per-conversation max rounds override. When set, the conversation auto-pauses after this many rounds.</summary>
+    public int? MaxRounds { get; set; }
+
     /// <summary>Ordered list of all messages (both successful responses and errors) in this conversation.</summary>
     public List<PersistedMessage> Messages { get; } = new();
 

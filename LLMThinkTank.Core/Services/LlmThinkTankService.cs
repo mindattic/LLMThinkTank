@@ -6,10 +6,10 @@ using LLMThinkTank.Core.Models;
 namespace LLMThinkTank.Core.Services;
 
 /// <summary>
-/// Core orchestration service that dispatches chat completions to 12+ LLM providers.
+/// Core orchestration service that dispatches chat completions to 11+ LLM providers.
 /// Acts as a unified API gateway, translating a common conversation format into each
 /// provider's native request schema (OpenAI, Anthropic Messages, Gemini GenerateContent,
-/// Cohere Chat v2, AI21 Completions, and the OpenAI-compatible family).
+/// Cohere Chat v2, and the OpenAI-compatible family).
 /// <para>
 /// <b>Architecture:</b> Each provider call follows the same pipeline:
 /// <list type="number">
@@ -141,15 +141,6 @@ public class LlmThinkTankService
             ApiKeyUrl = "https://dashboard.cohere.com/api-keys",
             Personality = "You are Command, made by Cohere. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be grounded and clear. 2-3 sentences max."
         },
-        // ── AI21 Labs ──
-        new LlmModel
-        {
-            Id = "ai21",
-            Name = "AI21",
-            Avatar = "㉑",
-            ApiKeyUrl = "https://studio.ai21.com/account/api-key",
-            Personality = "You are Jamba, made by AI21 Labs. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be eloquent and reasoned. 2-3 sentences max."
-        },
     };
 
     // ── Main dispatch ────────────────────────────────────────────────────────
@@ -173,11 +164,14 @@ public class LlmThinkTankService
     /// <param name="authOverrideJson">Optional JSON blob overriding default API key/model/maxTokens.</param>
     /// <param name="topic">The discussion topic injected into the system prompt.</param>
     /// <param name="history">Shared conversation history visible to all participants.</param>
+    /// <param name="maxTokensOverride">Optional per-conversation token limit that overrides all other defaults.</param>
     /// <returns>The model's sanitized response text.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="providerId"/> is not recognized.</exception>
     /// <exception cref="Exception">Thrown when the provider API returns a non-success status code.</exception>
-    public Task<string> CallProvider(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
-        => providerId switch
+    public Task<string> CallProvider(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history, int? maxTokensOverride = null)
+    {
+        _maxTokensOverride = maxTokensOverride;
+        return providerId switch
         {
             "openai"     => CallOpenAI(providerId, personalityMarkdown, authOverrideJson, topic, history),
             "claude"     => CallClaude(providerId, personalityMarkdown, authOverrideJson, topic, history),
@@ -190,9 +184,11 @@ public class LlmThinkTankService
             "openrouter" => CallOpenAiCompatible(providerId, "OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "meta-llama/llama-3.1-8b-instruct", personalityMarkdown, authOverrideJson, topic, history),
             "fireworks"  => CallOpenAiCompatible(providerId, "Fireworks", "https://api.fireworks.ai/inference/v1/chat/completions", "accounts/fireworks/models/llama-v3p3-70b-instruct", personalityMarkdown, authOverrideJson, topic, history),
             "cohere"     => CallCohere(providerId, personalityMarkdown, authOverrideJson, topic, history),
-            "ai21"       => CallAI21(providerId, personalityMarkdown, authOverrideJson, topic, history),
             _            => throw new ArgumentException($"Unknown provider: {providerId}")
         };
+    }
+
+    private int? _maxTokensOverride;
 
     /// <summary>
     /// Raised after every API call with the provider ID, redacted response body, and error flag.
@@ -225,7 +221,7 @@ public class LlmThinkTankService
 
             object? redacted = providerId switch
             {
-                "openai" or "deepseek" or "mistral" or "xai" or "groq" or "together" or "openrouter" or "fireworks" or "ai21"
+                "openai" or "deepseek" or "mistral" or "xai" or "groq" or "together" or "openrouter" or "fireworks"
                     => RedactOpenAi(doc.RootElement),
                 "claude" => RedactClaude(doc.RootElement),
                 "gemini" => RedactGemini(doc.RootElement),
@@ -389,6 +385,9 @@ public class LlmThinkTankService
     /// </summary>
     private int GetMaxTokens(string providerId, string? authOverrideJson, int defaultMaxTokens = 2048)
     {
+        if (_maxTokensOverride.HasValue)
+            return _maxTokensOverride.Value;
+
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
         {
             try
@@ -730,46 +729,6 @@ public class LlmThinkTankService
         return SanitizeModelOutput(providerId, text);
     }
 
-    // ── AI21 Labs ────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Calls the AI21 Labs Chat Completions API (<c>POST /studio/v1/chat/completions</c>).
-    /// AI21's Jamba model uses OpenAI-compatible request/response format with Bearer auth.
-    /// </summary>
-    private async Task<string> CallAI21(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
-    {
-        // AI21 Jamba uses OpenAI-compatible chat completions
-        var messages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
-        var model = GetModel("ai21", authOverrideJson, defaultModel: "jamba-1.5-large");
-
-        var payload = new
-        {
-            model,
-            max_tokens = GetMaxTokens("ai21", authOverrideJson),
-            messages
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.ai21.com/studio/v1/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey("ai21", authOverrideJson));
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        var response = await _http.SendAsync(request);
-        var json = await response.Content.ReadAsStringAsync();
-
-        EmitDiagnostics("ai21", json, isError: !response.IsSuccessStatusCode);
-
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"AI21 {response.StatusCode}: {ExtractError(json)}");
-
-        var doc = JsonDocument.Parse(json);
-        var text = doc.RootElement
-            .GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content")
-            .GetString() ?? "";
-        return SanitizeModelOutput(providerId, text);
-    }
-
     // ── Sanitization ─────────────────────────────────────────────────────────
 
     /// <summary>
@@ -784,7 +743,7 @@ public class LlmThinkTankService
 
         text = text.TrimStart();
 
-        var pattern = "^(?:\\s*(?:\\[(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek|mistral|grok|xai|groq|together|openrouter|fireworks|cohere|command|ai21|jamba)\\]\\s*:|(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek|mistral|grok|xai|groq|together|openrouter|fireworks|cohere|command|ai21|jamba)\\s*:))+\\s*";
+        var pattern = "^(?:\\s*(?:\\[(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek|mistral|grok|xai|groq|together|openrouter|fireworks|cohere|command)\\]\\s*:|(?:chatgpt|gpt|assistant|openai|claude|gemini|deepseek|mistral|grok|xai|groq|together|openrouter|fireworks|cohere|command)\\s*:))+\\s*";
         text = System.Text.RegularExpressions.Regex.Replace(text, pattern, "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return text.TrimStart();

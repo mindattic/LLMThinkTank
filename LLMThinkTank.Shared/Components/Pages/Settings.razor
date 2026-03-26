@@ -10,11 +10,6 @@
 <PageTitle>Settings</PageTitle>
 
 <div class="settings-container">
-    <header class="thinktank-header">
-        <h1>Settings</h1>
-        <p class="subtitle">Configure providers and run connectivity tests.</p>
-    </header>
-
     <div class="settings-grid">
         <div class="settings-panel">
             <div class="settings-tabs">
@@ -24,12 +19,31 @@
                 <button class="settings-tab @(_activeSection == SettingsSection.Providers ? "active" : "")" @onclick="(() => _activeSection = SettingsSection.Providers)">
                     Personalities
                 </button>
+                <button class="settings-tab @(_activeSection == SettingsSection.Defaults ? "active" : "")" @onclick="(() => _activeSection = SettingsSection.Defaults)">
+                    Defaults
+                </button>
                 <button class="settings-tab @(_activeSection == SettingsSection.Appearance ? "active" : "")" @onclick="(() => _activeSection = SettingsSection.Appearance)">
                     Appearance
                 </button>
             </div>
 
-            @if (_activeSection == SettingsSection.Appearance)
+            @if (_activeSection == SettingsSection.Defaults)
+            {
+                <div class="settings-form" style="padding:1rem;">
+                    <label>Global Max Tokens</label>
+                    <p class="options-hint" style="margin-top:0;">Default max tokens per response. Individual conversations can override this.</p>
+                    <input type="number" min="64" max="32768" step="64"
+                           value="@(ThinkTankSettings.GlobalMaxTokens ?? 2048)"
+                           @onchange="OnGlobalMaxTokensChanged" />
+
+                    <label style="margin-top:1rem;">Global Max Rounds</label>
+                    <p class="options-hint" style="margin-top:0;">Default max rounds per conversation. Individual conversations can override this.</p>
+                    <input type="number" min="1" max="999" step="1"
+                           value="@(ThinkTankSettings.GlobalMaxRounds ?? 10)"
+                           @onchange="OnGlobalMaxRoundsChanged" />
+                </div>
+            }
+            else if (_activeSection == SettingsSection.Appearance)
             {
                 <SettingsAppearance />
             }
@@ -87,6 +101,8 @@
 
                         <div class="settings-row">
                             <button class="start-btn" @onclick="SaveProviderAuth">Save</button>
+                            <span style="flex:1"></span>
+                            <button class="reset-btn" @onclick="RequestResetProviders" disabled="@(!_hasProviderDefaults)">Reset to Defaults</button>
                         </div>
                     </div>
                 </div>
@@ -131,10 +147,10 @@
                         @if (_activeTemplate is not null)
                         {
                             <label>Display name</label>
-                            <input value="@_activeTemplate.DisplayName" @oninput="OnTemplateNameChanged" placeholder="e.g. Bob Claude" />
+                            <input value="@_activeTemplate.DisplayName" @oninput="OnTemplateNameChanged" placeholder="e.g. Bob Claude" disabled="@(_activeTemplate.IsDefault)" />
 
                             <label>Provider</label>
-                            <select value="@_activeTemplate.ProviderId" @onchange="OnTemplateProviderChanged">
+                            <select value="@_activeTemplate.ProviderId" @onchange="OnTemplateProviderChanged" disabled="@(_activeTemplate.IsDefault)">
                                 @foreach (var p in _providerOptions)
                                 {
                                     <option value="@p.Id">@p.Name</option>
@@ -147,14 +163,14 @@
                             *@
 
                             <label>Personality (markdown)</label>
-                            <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="16">@_activeTemplate.PersonalityMarkdown</textarea>
+                            <textarea class="settings-textarea" @oninput="OnTemplatePersonalityChanged" rows="16" disabled="@(_activeTemplate.IsDefault)">@_activeTemplate.PersonalityMarkdown</textarea>
 
                             <div class="settings-row">
-                                <button class="start-btn" @onclick="SaveActiveTemplate" disabled="@(_activeTemplate is null)">Save</button>
+                                <button class="start-btn" @onclick="SaveActiveTemplate" disabled="@(_activeTemplate is null || _activeTemplate.IsDefault)">Save</button>
                                 <button class="start-btn" @onclick="TestTemplate" disabled="@_testing">Test connection</button>
-                                <button class="reset-btn" @onclick="RequestRemoveTemplate" disabled="@(_activeTemplate?.IsDefault == true)">Remove</button>
+                                <button class="reset-btn" @onclick="RequestRemoveTemplate" disabled="@(_activeTemplate.IsDefault)">Remove</button>
                                 <span style="flex:1"></span>
-                                <button class="start-btn" @onclick="GeneratePersonality" disabled="@_generating">@(_generating ? "Generating…" : "Generate")</button>
+                                <button class="start-btn" @onclick="GeneratePersonality" disabled="@(_generating || _activeTemplate.IsDefault)">@(_generating ? "Generating…" : "Generate")</button>
                             </div>
 
                             @if (!string.IsNullOrWhiteSpace(_lastError))
@@ -175,7 +191,7 @@
 
 @code {
     private LLMThinkTank.Shared.Components.Shared.ConfirmationDialog _confirmDialog = default!;
-    private enum SettingsSection { Models, Providers, Appearance }
+    private enum SettingsSection { Models, Providers, Defaults, Appearance }
 
     private string? _activeTemplateId;
     private bool _showAddDropdown;
@@ -220,8 +236,7 @@
         ("together", "Together"),
         ("openrouter", "OpenRouter"),
         ("fireworks", "Fireworks"),
-        ("cohere", "Cohere"),
-        ("ai21", "AI21")
+        ("cohere", "Cohere")
     };
 
     private static readonly Dictionary<string, string[]> KnownModels = new()
@@ -232,13 +247,14 @@
         ["deepseek"] = ["deepseek-chat", "deepseek-reasoner"],
         ["mistral"] = ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest", "codestral-latest"],
         ["xai"] = ["grok-3-latest", "grok-3-mini-latest"],
-        ["groq"] = ["llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "gemma2-9b-it", "mixtral-8x7b-32768"],
-        ["together"] = ["meta-llama/Llama-4-Scout-17B-16E-Instruct", "meta-llama/Llama-4-Maverick-17B-128E-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
+        ["groq"] = ["llama-3.3-70b-versatile", "llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct", "gemma2-9b-it", "mixtral-8x7b-32768"],
+        ["together"] = ["meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8", "meta-llama/Llama-4-Scout-17B-16E-Instruct", "meta-llama/Llama-4-Maverick-17B-128E-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"],
         ["openrouter"] = ["openai/gpt-4.1-mini", "anthropic/claude-sonnet-4", "google/gemini-2.5-flash", "meta-llama/llama-4-scout"],
         ["fireworks"] = ["accounts/fireworks/models/llama-v3p3-70b-instruct", "accounts/fireworks/models/mixtral-8x7b-instruct"],
-        ["cohere"] = ["command-r-plus", "command-r", "command-light"],
-        ["ai21"] = ["jamba-1.5-large", "jamba-1.5-mini"]
+        ["cohere"] = ["command-r-plus", "command-r", "command-light"]
     };
+
+    private bool _hasProviderDefaults => ThinkTankSettings.ProviderDefaults.Count > 0;
 
     protected override void OnInitialized()
     {
@@ -431,6 +447,32 @@
         ThinkTankSettings.SetAuthJson(_activeProviderId, _providerAuthJson ?? "{}");
         _lastError = null;
         Chat.Add("Models", $"Saved auth config for {_activeProviderId}.");
+    }
+
+    private async Task RequestResetProviders()
+    {
+        var confirmed = await _confirmDialog.ShowAsync(
+            "Reset Providers",
+            "Reset all provider API keys and models to their defaults? This will overwrite your current credentials.",
+            "Reset");
+        if (!confirmed) return;
+
+        ThinkTankSettings.ResetProvidersToDefaults();
+        _providerAuthJson = ThinkTankSettings.GetAuthJson(_activeProviderId);
+        _currentApiKey = ExtractApiKey(_providerAuthJson);
+        Chat.Add("Models", "All providers reset to defaults.");
+    }
+
+    private void OnGlobalMaxTokensChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var val) && val >= 64 && val <= 32768)
+            ThinkTankSettings.SetGlobalMaxTokens(val);
+    }
+
+    private void OnGlobalMaxRoundsChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var val) && val >= 1 && val <= 999)
+            ThinkTankSettings.SetGlobalMaxRounds(val);
     }
 
     private void ToggleAddDropdown()

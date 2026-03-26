@@ -15,7 +15,7 @@ public class SettingsService : LlmThinkTankSettingsService
 /// templates, conversation history, and appearance settings. Data is stored as a single
 /// <c>Settings.json</c> file in the user's <c>LocalApplicationData/MindAttic/LLMThinkTank</c> folder.
 /// <para>
-/// <b>Initialization:</b> On first launch, seeds default auth configs for all 12 providers and
+/// <b>Initialization:</b> On first launch, seeds default auth configs for all 11 providers and
 /// creates default personality templates. On subsequent launches, loads existing settings and
 /// backfills any new providers added since the last update.
 /// </para>
@@ -28,6 +28,12 @@ public class LlmThinkTankSettingsService
 {
     /// <summary>Per-provider authentication and model configuration, keyed by provider ID.</summary>
     public Dictionary<string, ProviderAuthConfig> ProviderAuth { get; } = new();
+
+    /// <summary>
+    /// Default provider auth configs (keyed by provider ID) loaded from an external source
+    /// such as User Secrets. Used by <see cref="ResetProvidersToDefaults"/> to restore credentials.
+    /// </summary>
+    public Dictionary<string, ProviderAuthConfig> ProviderDefaults { get; } = new();
 
     /// <summary>Reusable participant templates (both built-in defaults and user-created customs).</summary>
     public List<ParticipantTemplate> Templates { get; } = new();
@@ -48,6 +54,12 @@ public class LlmThinkTankSettingsService
 
     /// <summary>Border radius in pixels for rounded UI elements. Range: 0-24.</summary>
     public int? BorderRadius { get; private set; } = 10;
+
+    /// <summary>Global default max tokens per response. Conversations inherit this unless overridden.</summary>
+    public int? GlobalMaxTokens { get; private set; } = 2048;
+
+    /// <summary>Global default max rounds per conversation. Conversations inherit this unless overridden.</summary>
+    public int? GlobalMaxRounds { get; private set; } = 10;
 
     /// <summary>
     /// Initializes the settings service by loading from disk or creating default configuration.
@@ -90,7 +102,6 @@ public class LlmThinkTankSettingsService
         ProviderAuth["openrouter"] = new ProviderAuthConfig("openrouter", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["fireworks"] = new ProviderAuthConfig("fireworks", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}");
         ProviderAuth["cohere"] = new ProviderAuthConfig("cohere", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus-08-2024\",\n  \"maxTokens\": 2048\n}");
-        ProviderAuth["ai21"] = new ProviderAuthConfig("ai21", "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}");
 
         Templates.AddRange(CreateDefaultTemplates());
 
@@ -181,13 +192,6 @@ public class LlmThinkTankSettingsService
             DisplayName: "Cohere",
             PersonalityMarkdown: "You are Command, made by Cohere. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be grounded and clear. 2-3 sentences max.",
             AuthOverrideJson: null,
-            IsDefault: true),
-        new ParticipantTemplate(
-            TemplateId: ChatConversationsService.NewId(),
-            ProviderId: "ai21",
-            DisplayName: "AI21",
-            PersonalityMarkdown: "You are Jamba, made by AI21 Labs. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be eloquent and reasoned. 2-3 sentences max.",
-            AuthOverrideJson: null,
             IsDefault: true)
     };
 
@@ -202,6 +206,18 @@ public class LlmThinkTankSettingsService
         {
             var defaults = CreateDefaultTemplates();
             var changed = false;
+
+            // Remove providers that are no longer supported
+            var supportedProviders = new HashSet<string>(defaults.Select(d => d.ProviderId));
+            var removedTemplates = Templates.RemoveAll(t => t.IsDefault && !supportedProviders.Contains(t.ProviderId));
+            if (removedTemplates > 0)
+                changed = true;
+
+            foreach (var key in ProviderAuth.Keys.Where(k => !supportedProviders.Contains(k)).ToList())
+            {
+                ProviderAuth.Remove(key);
+                changed = true;
+            }
 
             foreach (var d in defaults)
             {
@@ -236,8 +252,7 @@ public class LlmThinkTankSettingsService
                 ["together"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/Llama-4-Scout-17B-16E-Instruct\",\n  \"maxTokens\": 2048\n}",
                 ["openrouter"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"maxTokens\": 2048\n}",
                 ["fireworks"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"accounts/fireworks/models/llama-v3p3-70b-instruct\",\n  \"maxTokens\": 2048\n}",
-                ["cohere"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus-08-2024\",\n  \"maxTokens\": 2048\n}",
-                ["ai21"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"jamba-1.5-large\",\n  \"maxTokens\": 2048\n}"
+                ["cohere"] = "{\n  \"type\": \"bearer\",\n  \"apiKey\": \"\",\n  \"model\": \"command-r-plus-08-2024\",\n  \"maxTokens\": 2048\n}"
             };
 
             foreach (var (providerId, defaultJson) in defaultAuths)
@@ -313,9 +328,6 @@ public class LlmThinkTankSettingsService
 
             WriteIfMissing("Cohere.md",
                 "# Cohere\n\nYou are Command, made by Cohere. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be grounded and clear. 2-3 sentences max.\n");
-
-            WriteIfMissing("AI21.md",
-                "# AI21\n\nYou are Jamba, made by AI21 Labs. You are in a live roundtable with other AI systems. Read what they said and respond directly. Be eloquent and reasoned. 2-3 sentences max.\n");
         }
         catch { }
 
@@ -359,6 +371,8 @@ public class LlmThinkTankSettingsService
             ControlHeight = dto.ControlHeight ?? 40;
             Gutter = dto.Gutter ?? 10;
             BorderRadius = dto.BorderRadius ?? 10;
+            GlobalMaxTokens = dto.GlobalMaxTokens ?? 2048;
+            GlobalMaxRounds = dto.GlobalMaxRounds ?? 10;
             return true;
         }
         catch
@@ -383,7 +397,9 @@ public class LlmThinkTankSettingsService
                 AppearanceTheme = AppearanceTheme,
                 ControlHeight = ControlHeight,
                 Gutter = Gutter,
-                BorderRadius = BorderRadius
+                BorderRadius = BorderRadius,
+                GlobalMaxTokens = GlobalMaxTokens,
+                GlobalMaxRounds = GlobalMaxRounds
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(dto, new System.Text.Json.JsonSerializerOptions
@@ -440,19 +456,35 @@ public class LlmThinkTankSettingsService
         Save();
     }
 
+    /// <summary>Sets the global default max tokens and persists to disk.</summary>
+    public void SetGlobalMaxTokens(int tokens)
+    {
+        GlobalMaxTokens = tokens;
+        Save();
+    }
+
+    /// <summary>Sets the global default max rounds and persists to disk.</summary>
+    public void SetGlobalMaxRounds(int rounds)
+    {
+        GlobalMaxRounds = rounds;
+        Save();
+    }
+
     /// <summary>Replaces all persisted conversations and writes to disk.</summary>
     public void SetConversations(IEnumerable<PersistedConversation> convos)
     {
+        var snapshot = convos.ToList();
         Conversations.Clear();
-        Conversations.AddRange(convos);
+        Conversations.AddRange(snapshot);
         Save();
     }
 
     /// <summary>Replaces all participant templates and writes to disk.</summary>
     public void SaveTemplates(IEnumerable<ParticipantTemplate> templates)
     {
+        var snapshot = templates.ToList();
         Templates.Clear();
-        Templates.AddRange(templates);
+        Templates.AddRange(snapshot);
         Save();
     }
 
@@ -502,6 +534,21 @@ public class LlmThinkTankSettingsService
         }
     }
 
+    /// <summary>
+    /// Resets all provider auth configs to the values in <see cref="ProviderDefaults"/>.
+    /// Providers without a default entry are left unchanged.
+    /// </summary>
+    public void ResetProvidersToDefaults()
+    {
+        if (ProviderDefaults.Count == 0)
+            return;
+
+        foreach (var (providerId, cfg) in ProviderDefaults)
+            ProviderAuth[providerId] = cfg;
+
+        Save();
+    }
+
     /// <summary>Internal DTO that mirrors the on-disk Settings.json structure for serialization.</summary>
     private sealed class PersistedSettings
     {
@@ -512,5 +559,7 @@ public class LlmThinkTankSettingsService
         public int? ControlHeight { get; set; }
         public int? Gutter { get; set; }
         public int? BorderRadius { get; set; }
+        public int? GlobalMaxTokens { get; set; }
+        public int? GlobalMaxRounds { get; set; }
     }
 }

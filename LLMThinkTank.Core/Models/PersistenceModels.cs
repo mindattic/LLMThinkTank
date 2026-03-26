@@ -23,6 +23,12 @@ public sealed record PersistedConversation(
 
     /// <summary>Timestamped diagnostic entries (redacted API responses, errors), or <c>null</c> if none.</summary>
     public List<PersistedStatusEvent>? Diagnostics { get; init; }
+
+    /// <summary>Per-conversation max token limit override, or <c>null</c> to use global default.</summary>
+    public int? MaxTokens { get; init; }
+
+    /// <summary>Per-conversation max rounds override, or <c>null</c> to use global default.</summary>
+    public int? MaxRounds { get; init; }
 }
 
 /// <summary>

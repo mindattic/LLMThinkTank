@@ -37,6 +37,8 @@ public class ChatConversationsService
             {
                 var convo = new ChatConversation(c.ChatId, c.Title);
                 convo.Topic = c.Topic;
+                convo.MaxTokens = c.MaxTokens;
+                convo.MaxRounds = c.MaxRounds;
 
                 if (c.Messages is not null)
                     convo.Messages.AddRange(c.Messages);
@@ -146,9 +148,10 @@ public class ChatConversationsService
             Topic: c.Topic,
             Messages: c.Messages.Count == 0 ? null : new List<PersistedMessage>(c.Messages))
         {
-            StatusEvents = c.StatusEvents.Count == 0 ? null : new List<PersistedStatusEvent>(c.StatusEvents)
-            ,
-            Diagnostics = c.Diagnostics.Count == 0 ? null : new List<PersistedStatusEvent>(c.Diagnostics)
+            StatusEvents = c.StatusEvents.Count == 0 ? null : new List<PersistedStatusEvent>(c.StatusEvents),
+            Diagnostics = c.Diagnostics.Count == 0 ? null : new List<PersistedStatusEvent>(c.Diagnostics),
+            MaxTokens = c.MaxTokens,
+            MaxRounds = c.MaxRounds
         }));
     }
 }
