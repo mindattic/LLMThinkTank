@@ -506,12 +506,27 @@ public class LlmThinkTankService
     /// Calls the Anthropic Messages API (<c>POST /v1/messages</c>).
     /// Converts OpenAI-style messages to Anthropic's format: system prompt as a top-level field,
     /// and only user/assistant role messages in the messages array. Uses <c>x-api-key</c> header auth.
+    /// <para>
+    /// <b>Prompt caching:</b> The system prompt and the last user message are marked with
+    /// <c>cache_control: {"type": "ephemeral"}</c> so that repeated calls with the same
+    /// personality + topic pay only 10% of normal input cost on cache hits.
+    /// </para>
     /// </summary>
     private async Task<string> CallClaude(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history)
     {
         var openAiMessages = BuildOpenAiStyleMessages(providerId, personalityMarkdown, topic, history);
 
-        var system = $"{personalityMarkdown}\n\nTopic: \"{topic}\"";
+        // System prompt as a cacheable content block array (up to 90% savings on cache hits)
+        var system = new object[]
+        {
+            new
+            {
+                type = "text",
+                text = $"{personalityMarkdown}\n\nTopic: \"{topic}\"",
+                cache_control = new { type = "ephemeral" }
+            }
+        };
+
         var filtered = openAiMessages
             .Where(m => (string)m.GetType().GetProperty("role")!.GetValue(m)! != "system")
             .Select(m => new
@@ -521,6 +536,25 @@ public class LlmThinkTankService
             })
             .ToList();
 
+        // Mark the last user message for caching so the full conversation prefix is cached
+        var claudeMessages = filtered.Select((m, i) =>
+            i == filtered.Count - 1 && m.role == "user"
+                ? (object)new
+                {
+                    m.role,
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = m.content,
+                            cache_control = new { type = "ephemeral" }
+                        }
+                    }
+                }
+                : m
+        ).ToList();
+
         var model = GetModel("claude", authOverrideJson, defaultModel: "claude-sonnet-4-6");
 
         var payload = new
@@ -528,12 +562,13 @@ public class LlmThinkTankService
             model,
             max_tokens = GetMaxTokens("claude", authOverrideJson),
             system,
-            messages = filtered
+            messages = claudeMessages
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.anthropic.com/v1/messages");
         request.Headers.Add("x-api-key", GetApiKey("claude", authOverrideJson));
         request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
         var response = await _http.SendAsync(request);
