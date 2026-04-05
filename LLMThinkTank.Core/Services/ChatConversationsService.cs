@@ -12,7 +12,7 @@ namespace LLMThinkTank.Core.Services;
 /// </summary>
 public class ChatConversationsService
 {
-    private readonly LlmThinkTankSettingsService _settings;
+    private readonly LlmThinkTankSettingsService settings;
 
     /// <summary>Observable collection of all open conversation tabs, bound to the tab bar UI.</summary>
     public ObservableCollection<ChatConversation> Conversations { get; } = new();
@@ -29,9 +29,9 @@ public class ChatConversationsService
     /// </summary>
     public ChatConversationsService(LlmThinkTankSettingsService settings)
     {
-        _settings = settings;
+        this.settings = settings;
 
-        if (_settings is SettingsService s)
+        if (this.settings is SettingsService s)
         {
             foreach (var c in s.Conversations)
             {
@@ -132,7 +132,7 @@ public class ChatConversationsService
     /// </summary>
     private void Persist()
     {
-        if (_settings is not SettingsService s)
+        if (settings is not SettingsService s)
             return;
 
         s.SetConversations(Conversations.Select(c => new PersistedConversation(

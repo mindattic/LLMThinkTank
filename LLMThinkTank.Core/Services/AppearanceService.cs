@@ -11,7 +11,7 @@ namespace LLMThinkTank.Core.Services;
 /// </summary>
 public class AppearanceService
 {
-    private readonly LlmThinkTankSettingsService _settings;
+    private readonly LlmThinkTankSettingsService settings;
 
     /// <summary>The active color theme applied to all UI components.</summary>
     public AppearanceMode Mode { get; private set; } = AppearanceMode.Dark;
@@ -30,11 +30,11 @@ public class AppearanceService
     /// </summary>
     public AppearanceService(LlmThinkTankSettingsService settings)
     {
-        _settings = settings;
-        Mode = ParseMode(_settings.AppearanceTheme) ?? AppearanceMode.Dark;
-        ControlHeight = _settings.ControlHeight ?? 40;
-        Gutter = _settings.Gutter ?? 10;
-        BorderRadius = _settings.BorderRadius ?? 10;
+        this.settings = settings;
+        Mode = ParseMode(this.settings.AppearanceTheme) ?? AppearanceMode.Dark;
+        ControlHeight = this.settings.ControlHeight ?? 40;
+        Gutter = this.settings.Gutter ?? 10;
+        BorderRadius = this.settings.BorderRadius ?? 10;
     }
 
     /// <summary>Raised when any appearance property changes, triggering UI re-render.</summary>
@@ -49,7 +49,7 @@ public class AppearanceService
             return;
 
         Mode = mode;
-        _settings.SetAppearanceTheme(ToThemeValue(mode));
+        settings.SetAppearanceTheme(ToThemeValue(mode));
         Changed?.Invoke();
     }
 
@@ -61,7 +61,7 @@ public class AppearanceService
             return;
 
         ControlHeight = height;
-        _settings.SetControlHeight(height);
+        settings.SetControlHeight(height);
         Changed?.Invoke();
     }
 
@@ -71,7 +71,7 @@ public class AppearanceService
         px = Math.Clamp(px, 0, 30);
         if (Gutter == px) return;
         Gutter = px;
-        _settings.SetGutter(px);
+        settings.SetGutter(px);
         Changed?.Invoke();
     }
 
@@ -81,7 +81,7 @@ public class AppearanceService
         px = Math.Clamp(px, 0, 24);
         if (BorderRadius == px) return;
         BorderRadius = px;
-        _settings.SetBorderRadius(px);
+        settings.SetBorderRadius(px);
         Changed?.Invoke();
     }
 

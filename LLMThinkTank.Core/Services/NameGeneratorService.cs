@@ -10,16 +10,16 @@ namespace LLMThinkTank.Core.Services;
 /// </summary>
 public class NameGeneratorService
 {
-    private readonly LlmThinkTankService _thinkTank;
-    private readonly LlmThinkTankSettingsService _settings;
+    private readonly LlmThinkTankService thinkTank;
+    private readonly LlmThinkTankSettingsService settings;
 
     /// <summary>
     /// Initializes a new instance with access to the LLM dispatch service and settings.
     /// </summary>
     public NameGeneratorService(LlmThinkTankService thinkTank, LlmThinkTankSettingsService settings)
     {
-        _thinkTank = thinkTank;
-        _settings = settings;
+        this.thinkTank = thinkTank;
+        this.settings = settings;
     }
 
     /// <summary>
@@ -38,7 +38,7 @@ public class NameGeneratorService
 
         var history = new List<SharedTurn>();
 
-        var name = await _thinkTank.CallProvider(providerId, personality, authOverrideJson, prompt, history);
+        var name = await thinkTank.CallProvider(providerId, personality, authOverrideJson, prompt, history);
 
         name = (name ?? "").Trim();
         if (name.Length > 32)

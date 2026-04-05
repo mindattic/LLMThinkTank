@@ -22,8 +22,8 @@ namespace LLMThinkTank.Core.Services;
 /// </summary>
 public class LlmThinkTankService
 {
-    private readonly HttpClient _http;
-    private readonly LlmThinkTankSettingsService _settings;
+    private readonly HttpClient http;
+    private readonly LlmThinkTankSettingsService settings;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LlmThinkTankService"/> class.
@@ -32,8 +32,8 @@ public class LlmThinkTankService
     /// <param name="settings">Settings service providing API keys, model selections, and token limits.</param>
     public LlmThinkTankService(HttpClient http, LlmThinkTankSettingsService settings)
     {
-        _http = http;
-        _settings = settings;
+        this.http = http;
+        this.settings = settings;
     }
 
     /// <summary>
@@ -170,7 +170,7 @@ public class LlmThinkTankService
     /// <exception cref="Exception">Thrown when the provider API returns a non-success status code.</exception>
     public Task<string> CallProvider(string providerId, string personalityMarkdown, string? authOverrideJson, string topic, List<SharedTurn> history, int? maxTokensOverride = null)
     {
-        _maxTokensOverride = maxTokensOverride;
+        this.maxTokensOverride = maxTokensOverride;
         return providerId switch
         {
             "openai"     => CallOpenAI(providerId, personalityMarkdown, authOverrideJson, topic, history),
@@ -188,7 +188,7 @@ public class LlmThinkTankService
         };
     }
 
-    private int? _maxTokensOverride;
+    private int? maxTokensOverride;
 
     /// <summary>
     /// Raised after every API call with the provider ID, redacted response body, and error flag.
@@ -342,7 +342,7 @@ public class LlmThinkTankService
             catch { }
         }
 
-        return _settings.GetKeyForProvider(providerId, null);
+        return settings.GetKeyForProvider(providerId, null);
     }
 
     /// <summary>
@@ -367,7 +367,7 @@ public class LlmThinkTankService
 
         try
         {
-            using var doc = JsonDocument.Parse(_settings.GetAuthJson(providerId));
+            using var doc = JsonDocument.Parse(settings.GetAuthJson(providerId));
             if (doc.RootElement.TryGetProperty("model", out var model))
             {
                 var v = model.GetString();
@@ -385,8 +385,8 @@ public class LlmThinkTankService
     /// </summary>
     private int GetMaxTokens(string providerId, string? authOverrideJson, int defaultMaxTokens = 2048)
     {
-        if (_maxTokensOverride.HasValue)
-            return _maxTokensOverride.Value;
+        if (this.maxTokensOverride.HasValue)
+            return this.maxTokensOverride.Value;
 
         if (!string.IsNullOrWhiteSpace(authOverrideJson))
         {
@@ -401,7 +401,7 @@ public class LlmThinkTankService
 
         try
         {
-            using var doc = JsonDocument.Parse(_settings.GetAuthJson(providerId));
+            using var doc = JsonDocument.Parse(settings.GetAuthJson(providerId));
             if (doc.RootElement.TryGetProperty("maxTokens", out var mt) && mt.ValueKind == JsonValueKind.Number)
                 return mt.GetInt32();
         }
@@ -483,7 +483,7 @@ public class LlmThinkTankService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey("openai", authOverrideJson));
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         EmitDiagnostics("openai", json, isError: !response.IsSuccessStatusCode);
@@ -571,7 +571,7 @@ public class LlmThinkTankService
         request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         EmitDiagnostics("claude", json, isError: !response.IsSuccessStatusCode);
@@ -647,7 +647,7 @@ public class LlmThinkTankService
         var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         EmitDiagnostics("gemini", json, isError: !response.IsSuccessStatusCode);
@@ -707,7 +707,7 @@ public class LlmThinkTankService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey(providerId, authOverrideJson));
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         EmitDiagnostics(providerId, json, isError: !response.IsSuccessStatusCode);
@@ -747,7 +747,7 @@ public class LlmThinkTankService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetApiKey("cohere", authOverrideJson));
         request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-        var response = await _http.SendAsync(request);
+        var response = await http.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         EmitDiagnostics("cohere", json, isError: !response.IsSuccessStatusCode);

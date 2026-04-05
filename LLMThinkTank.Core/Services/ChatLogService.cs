@@ -10,13 +10,13 @@ namespace LLMThinkTank.Core.Services;
 /// </summary>
 public class ChatLogService
 {
-    private readonly List<ChatLogEntry> _entries = new();
+    private readonly List<ChatLogEntry> entries = new();
 
     /// <summary>Raised when an entry is added or the log is cleared, triggering UI re-render.</summary>
     public event Action? Changed;
 
     /// <summary>Read-only view of all log entries in chronological order.</summary>
-    public IReadOnlyList<ChatLogEntry> Entries => _entries;
+    public IReadOnlyList<ChatLogEntry> Entries => entries;
 
     /// <summary>
     /// Appends a new log entry and notifies subscribers.
@@ -26,14 +26,14 @@ public class ChatLogService
     /// <param name="isError">Whether this entry represents an error condition.</param>
     public void Add(string source, string text, bool isError = false)
     {
-        _entries.Add(new ChatLogEntry(DateTimeOffset.UtcNow, source, text, isError));
+        entries.Add(new ChatLogEntry(DateTimeOffset.UtcNow, source, text, isError));
         Changed?.Invoke();
     }
 
     /// <summary>Removes all log entries and notifies subscribers.</summary>
     public void Clear()
     {
-        _entries.Clear();
+        entries.Clear();
         Changed?.Invoke();
     }
 }

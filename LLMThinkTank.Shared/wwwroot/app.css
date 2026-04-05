@@ -1746,10 +1746,11 @@ a.settings-tab.active {
 
 .provider-dot {
     display: inline-block;
+    margin-left: auto;
+    flex-shrink: 0;
     width: 0.85rem;
     height: 0.85rem;
     border-radius: 999px;
-    margin-left: 0.35rem;
     border: 1px solid var(--border);
     vertical-align: middle;
 }

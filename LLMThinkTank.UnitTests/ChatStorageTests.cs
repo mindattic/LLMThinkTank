@@ -6,21 +6,21 @@ namespace LLMThinkTank.UnitTests;
 [TestFixture]
 public class ChatStorageTests
 {
-    private string _testChatId = null!;
-    private string _chatFolder = null!;
+    private string testChatId = null!;
+    private string chatFolder = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _testChatId = $"test_{Guid.NewGuid():N}";
-        _chatFolder = ChatStorage.GetChatFolder(_testChatId);
+        testChatId = $"test_{Guid.NewGuid():N}";
+        chatFolder = ChatStorage.GetChatFolder(testChatId);
     }
 
     [TearDown]
     public void TearDown()
     {
-        if (Directory.Exists(_chatFolder))
-            Directory.Delete(_chatFolder, recursive: true);
+        if (Directory.Exists(chatFolder))
+            Directory.Delete(chatFolder, recursive: true);
     }
 
     // ── Path helpers ────────────────────────────────────────────────────
@@ -59,18 +59,18 @@ public class ChatStorageTests
     [Test]
     public async Task AppendChatJsonAsync_CreatesFileAndFolder()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", text = "hello" });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", text = "hello" });
 
-        Assert.That(File.Exists(ChatStorage.GetChatJsonPath(_testChatId)), Is.True);
+        Assert.That(File.Exists(ChatStorage.GetChatJsonPath(testChatId)), Is.True);
     }
 
     [Test]
     public async Task AppendChatJsonAsync_AppendsMultipleEntries()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", text = "first" });
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", text = "second" });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", text = "first" });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", text = "second" });
 
-        var json = await File.ReadAllTextAsync(ChatStorage.GetChatJsonPath(_testChatId));
+        var json = await File.ReadAllTextAsync(ChatStorage.GetChatJsonPath(testChatId));
         Assert.That(json, Does.Contain("first"));
         Assert.That(json, Does.Contain("second"));
     }
@@ -80,7 +80,7 @@ public class ChatStorageTests
     [Test]
     public async Task ReadPerspectiveAsync_MissingFile_ReturnsEmpty()
     {
-        var result = await ChatStorage.ReadPerspectiveAsync(_testChatId, "openai");
+        var result = await ChatStorage.ReadPerspectiveAsync(testChatId, "openai");
         Assert.That(result, Is.EqualTo(""));
     }
 
@@ -88,19 +88,19 @@ public class ChatStorageTests
     public async Task WriteThenReadPerspective_Roundtrips()
     {
         var markdown = "# Test Perspective\n\nSome analysis here.";
-        await ChatStorage.WritePerspectiveAsync(_testChatId, "claude", markdown);
+        await ChatStorage.WritePerspectiveAsync(testChatId, "claude", markdown);
 
-        var result = await ChatStorage.ReadPerspectiveAsync(_testChatId, "claude");
+        var result = await ChatStorage.ReadPerspectiveAsync(testChatId, "claude");
         Assert.That(result, Is.EqualTo(markdown));
     }
 
     [Test]
     public async Task WritePerspectiveAsync_OverwritesExisting()
     {
-        await ChatStorage.WritePerspectiveAsync(_testChatId, "gemini", "version1");
-        await ChatStorage.WritePerspectiveAsync(_testChatId, "gemini", "version2");
+        await ChatStorage.WritePerspectiveAsync(testChatId, "gemini", "version1");
+        await ChatStorage.WritePerspectiveAsync(testChatId, "gemini", "version2");
 
-        var result = await ChatStorage.ReadPerspectiveAsync(_testChatId, "gemini");
+        var result = await ChatStorage.ReadPerspectiveAsync(testChatId, "gemini");
         Assert.That(result, Is.EqualTo("version2"));
     }
 
@@ -109,14 +109,14 @@ public class ChatStorageTests
     [Test]
     public async Task LoadTurnsAsync_MissingFile_ReturnsEmpty()
     {
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns, Is.Empty);
     }
 
     [Test]
     public async Task LoadTurnsAsync_ParsesTurnEntries()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new
+        await ChatStorage.AppendChatJsonAsync(testChatId, new
         {
             type = "turn",
             participantId = "p1",
@@ -125,7 +125,7 @@ public class ChatStorageTests
             isError = false
         });
 
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns, Has.Count.EqualTo(1));
         Assert.That(turns[0].ParticipantId, Is.EqualTo("p1"));
         Assert.That(turns[0].Text, Is.EqualTo("Hello world"));
@@ -136,21 +136,21 @@ public class ChatStorageTests
     [Test]
     public async Task LoadTurnsAsync_IgnoresNonTurnEntries()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "status", text = "Round started" });
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", participantId = "p1", text = "Hi", round = 0 });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "status", text = "Round started" });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", participantId = "p1", text = "Hi", round = 0 });
 
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns, Has.Count.EqualTo(1));
     }
 
     [Test]
     public async Task LoadTurnsAsync_MultipleTurns_PreservesOrder()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", participantId = "p1", text = "First", round = 0 });
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", participantId = "p2", text = "Second", round = 0 });
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn", participantId = "p1", text = "Third", round = 1 });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", participantId = "p1", text = "First", round = 0 });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", participantId = "p2", text = "Second", round = 0 });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn", participantId = "p1", text = "Third", round = 1 });
 
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns, Has.Count.EqualTo(3));
         Assert.That(turns[0].Text, Is.EqualTo("First"));
         Assert.That(turns[1].Text, Is.EqualTo("Second"));
@@ -160,7 +160,7 @@ public class ChatStorageTests
     [Test]
     public async Task LoadTurnsAsync_ErrorTurnParsed()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new
+        await ChatStorage.AppendChatJsonAsync(testChatId, new
         {
             type = "turn",
             participantId = "p1",
@@ -169,16 +169,16 @@ public class ChatStorageTests
             isError = true
         });
 
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns[0].IsError, Is.True);
     }
 
     [Test]
     public async Task LoadTurnsAsync_MissingFields_DefaultsGracefully()
     {
-        await ChatStorage.AppendChatJsonAsync(_testChatId, new { type = "turn" });
+        await ChatStorage.AppendChatJsonAsync(testChatId, new { type = "turn" });
 
-        var turns = await ChatStorage.LoadTurnsAsync(_testChatId);
+        var turns = await ChatStorage.LoadTurnsAsync(testChatId);
         Assert.That(turns, Has.Count.EqualTo(1));
         Assert.That(turns[0].ParticipantId, Is.EqualTo(""));
         Assert.That(turns[0].Text, Is.EqualTo(""));

@@ -15,10 +15,10 @@ public class HumanNameService
         "Sydney", "Taylor", "Teagan", "Dakota", "Cameron", "Jules", "Sasha", "Robin", "Jamie", "Alex"
     ];
 
-    private readonly Random _rng = new();
+    private readonly Random rng = new();
 
     /// <summary>Returns a random first name from the pool.</summary>
-    public string NextFirstName() => FirstNames[_rng.Next(FirstNames.Length)];
+    public string NextFirstName() => FirstNames[rng.Next(FirstNames.Length)];
 
     /// <summary>
     /// Returns a display name combining a random first name with the LLM name,

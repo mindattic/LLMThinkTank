@@ -9,14 +9,14 @@ namespace LLMThinkTank.UnitTests;
 [TestFixture]
 public class LlmThinkTankServiceTests
 {
-    private SettingsService _settings = null!;
-    private LlmThinkTankService _sut = null!;
+    private SettingsService settings = null!;
+    private LlmThinkTankService sut = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _settings = new SettingsService();
-        _sut = new LlmThinkTankService(new HttpClient(), _settings);
+        settings = new SettingsService();
+        sut = new LlmThinkTankService(new HttpClient(), settings);
     }
 
     // ── Models registry ─────────────────────────────────────────────────
@@ -24,13 +24,13 @@ public class LlmThinkTankServiceTests
     [Test]
     public void Models_Has11Providers()
     {
-        Assert.That(_sut.Models, Has.Count.EqualTo(11));
+        Assert.That(sut.Models, Has.Count.EqualTo(11));
     }
 
     [Test]
     public void Models_AllHaveRequiredFields()
     {
-        foreach (var model in _sut.Models)
+        foreach (var model in sut.Models)
         {
             Assert.That(model.Id, Is.Not.Null.And.Not.Empty, $"Model missing Id");
             Assert.That(model.Name, Is.Not.Null.And.Not.Empty, $"Model {model.Id} missing Name");
@@ -43,8 +43,8 @@ public class LlmThinkTankServiceTests
     [Test]
     public void Models_IdsAreUnique()
     {
-        var ids = _sut.Models.Select(m => m.Id).ToHashSet();
-        Assert.That(ids.Count, Is.EqualTo(_sut.Models.Count));
+        var ids = sut.Models.Select(m => m.Id).ToHashSet();
+        Assert.That(ids.Count, Is.EqualTo(sut.Models.Count));
     }
 
     [TestCase("openai")]
@@ -60,7 +60,7 @@ public class LlmThinkTankServiceTests
     [TestCase("cohere")]
     public void Models_ContainsExpectedProvider(string providerId)
     {
-        Assert.That(_sut.Models.Any(m => m.Id == providerId), Is.True, $"Missing provider: {providerId}");
+        Assert.That(sut.Models.Any(m => m.Id == providerId), Is.True, $"Missing provider: {providerId}");
     }
 
     // ── CallProvider routing ────────────────────────────────────────────
@@ -69,7 +69,7 @@ public class LlmThinkTankServiceTests
     public void CallProvider_UnknownProvider_ThrowsArgumentException()
     {
         Assert.ThrowsAsync<ArgumentException>(async () =>
-            await _sut.CallProvider("unknown_provider", "personality", null, "topic", new List<SharedTurn>()));
+            await sut.CallProvider("unknown_provider", "personality", null, "topic", new List<SharedTurn>()));
     }
 
     // ── SanitizeModelOutput (private static, tested via reflection) ─────
@@ -423,7 +423,7 @@ public class LlmThinkTankServiceTests
     public void DiagnosticsEvent_CanSubscribe()
     {
         string? capturedProvider = null;
-        _sut.Diagnostics += (provider, body, isError) => capturedProvider = provider;
+        sut.Diagnostics += (provider, body, isError) => capturedProvider = provider;
 
         // Just verify subscription doesn't throw - actual firing requires HTTP calls
         Assert.That(capturedProvider, Is.Null);

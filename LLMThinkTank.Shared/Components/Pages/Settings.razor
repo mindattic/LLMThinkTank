@@ -13,7 +13,7 @@
     <div class="settings-grid">
         <div class="settings-panel">
             <div class="settings-tabs">
-                <button class="settings-tab @(_activeSection == SettingsSection.Models ? "active" : "")" @onclick="(() => _activeSection = SettingsSection.Models)">
+                <button class="settings-tab @(_activeSection == SettingsSection.Models ? "active" : "")" @onclick="SelectProvidersTab">
                     Providers
                 </button>
                 <button class="settings-tab @(_activeSection == SettingsSection.Providers ? "active" : "")" @onclick="(() => _activeSection = SettingsSection.Providers)">
@@ -58,11 +58,9 @@
                             @foreach (var p in _providerOptions)
                             {
                                 <button class="settings-tab template-row @(p.Id == _activeProviderId ? "active" : "")" @onclick="(() => SelectProvider(p.Id))">
-                                    <span class="settings-tab-avatar">
-                                        @GetProviderAvatar(p.Id)
-                                        <span class="provider-dot @GetProviderDotClass(p.Id)" title="@GetProviderDotTitle(p.Id)"></span>
-                                    </span>
+                                    <span class="settings-tab-avatar">@GetProviderAvatar(p.Id)</span>
                                     <span class="template-name">@p.Name</span>
+                                    <span class="provider-dot @GetProviderDotClass(p.Id)" title="@GetProviderDotTitle(p.Id)"></span>
                                 </button>
                             }
                         </div>
@@ -270,8 +268,22 @@
         foreach (var p in _providerOptions)
             _providerStatus[p.Id] = new ProviderStatus(ProviderOnlineState.Unknown);
 
+        CheckAllProviders();
+
         _providerPollTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
         _ = ProviderPollLoopAsync();
+    }
+
+    private void SelectProvidersTab()
+    {
+        _activeSection = SettingsSection.Models;
+        CheckAllProviders();
+    }
+
+    private void CheckAllProviders()
+    {
+        foreach (var p in _providerOptions)
+            _ = CheckProviderOnlineAsync(p.Id, ThinkTankSettings.GetAuthJson(p.Id));
     }
 
     private void DebouncePersistProviderAuth(string providerId, string authJson)
